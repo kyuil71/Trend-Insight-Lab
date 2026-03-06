@@ -15,6 +15,11 @@
       -webkit-tap-highlight-color: transparent;
       background-color: #f8fafc;
     }
+    /* Fullscreen scroll fix for mobile browsers */
+    :fullscreen, ::-webkit-full-screen, :ms-fullscreen {
+      overflow-y: auto !important;
+      background-color: white;
+    }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -86,7 +91,7 @@
           { code: "T26-07", kr: "프라이스 디코딩", en: "Price Decoding", summary: "기업이 제시하는 가격을 수동적으로 받아들이지 않고, 원가 구조와 유통 마진, 시기별 변동 추이 등을 낱낱이 해독(Decoding)하고 검증하는 똑똑한 소비자들의 등장입니다. 가격 비교 앱과 AI 분석 도구를 활용하여 최적의 구매 시점을 찾고, 가격 거품에 대해 비판적인 목소리를 내는 능동적인 소비 행태입니다." },
           { code: "T26-08", kr: "건강지능 HQ", en: "Health Intelligence", summary: "단순히 병원에 가거나 약을 먹는 수동적인 건강 관리를 넘어, 자신의 유전자 정보와 생체 데이터를 이해하고 주도적으로 건강을 설계하는 높은 수준의 지능(HQ)입니다. 예방 의학적 관점에서 자신의 건강 리스크를 미리 파악하고, 맞춤형 식단과 운동으로 최적의 신체 상태를 유지하려는 노력입니다." },
           { code: "T26-09", kr: "1.5가구", en: "1.5 Households", summary: "완전한 1인 가구의 고립감과 다인 가구의 번거로움 사이에서, 프라이버시는 지키되 필요할 때만 느슨하게 연결되는 새로운 주거 형태입니다. 셰어하우스나 코리빙 하우스처럼 개인 공간은 철저히 분리하되 주방이나 거실 등 공용 공간을 공유하며 적절한 거리감을 유지하는 주거 방식입니다." },
-          { code: "T26-10", kr: "근본이즘", en: "Fundamentals", summary: "트렌드가 너무 빠르게 변하는 피로감 속에서, 변하지 않는 본질적인 가치와 오리지널리티(근본)로 회귀하려는 강력한 흐름입니다. 유행을 쫓기보다는 오랜 시간 검증된 클래식, 브랜드의 헤리티지, 제품의 본질적인 기능에 집중하며 깊이 있는 가치를 추구하는 성향입니다." }
+          { code: "T26-10", kr: "근본이즘", en: "Fundamentals", summary: "트렌드가 너무 빠르게 변하는 피로감 속에서, 변하지 않는 본질적인 가치와 오리지널리티(근본)로 회귀하려는 강력한 흐름입니다. 트렌드에 휩쓸리기보다 오랜 시간 검증된 클래식, 브랜드의 헤리티지, 제품의 본질적인 기능에 집중하며 깊이 있는 가치를 추구하는 성향입니다." }
         ]
       };
 
@@ -202,7 +207,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             if (!response.ok) throw new Error(`API 오류 상태 코드: ${response.status}`);
             const data = await response.json();
             const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) throw new Error("AI로부터 올바른 응답을 받지 못했습니다.");
+            if (!text) throw new Error("AI로부터 응답을 받지 못했습니다.");
 
             setState({ isAnalyzing: false });
             try { return JSON.parse(text); } catch(e) { return text; }
@@ -231,11 +236,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         async validateKey() {
           const input = document.getElementById('api-input');
           let keyToUse = input?.value || state.apiKey;
-          
-          if (!keyToUse) {
-            setState({ errorMsg: "Gemini API 키를 입력해 주세요." });
-            return;
-          }
+          if (!keyToUse) { setState({ errorMsg: "Gemini API 키를 입력해 주세요." }); return; }
 
           requestFullScreen(); 
           setState({ apiKey: keyToUse, isAnalyzing: true, loadingMsg: "인증 처리 중..." });
@@ -247,7 +248,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             setState({ step: 0, isAnalyzing: false });
           } else {
             sessionStorage.removeItem(CONFIG.SESSION_KEY_API);
-            setState({ apiKey: "", errorMsg: "유효하지 않은 API 키이거나 통신 오류가 발생했습니다. 키를 다시 확인해 주세요.", isAnalyzing: false });
+            setState({ apiKey: "", errorMsg: "유효하지 않은 API 키입니다.", isAnalyzing: false });
           }
         },
 
@@ -489,7 +490,8 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
          ========================================================= */
       function render() {
         const root = document.getElementById('root');
-        const containerClass = "w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-2xl overflow-x-hidden relative font-sans text-slate-900 pb-10";
+        // MODIFIED: Increased pb to 40 and ensured dynamic scrolling container logic
+        const containerClass = "w-full max-w-[430px] mx-auto bg-white min-h-screen relative font-sans text-slate-900 pb-40 overflow-y-visible overflow-x-hidden shadow-2xl";
         let content = "";
 
         if (state.isAnalyzing) {
@@ -574,7 +576,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             const deepDiveBlocks = state.step1Keywords.map(kw => {
               const res = state.deepDiveResult?.[kw.code] || state.deepDiveResult?.[kw.code.toLowerCase()] || state.deepDiveResult?.[kw.kr];
               if (!res) return "";
-              return `<div class="mb-12 animate-fade-in text-[15px]"><div class="bg-slate-900 rounded-[2rem] p-7 text-white mb-6 shadow-2xl text-[15px]"><div class="flex items-center gap-2 mb-2 text-[15px]"><span class="bg-blue-600 text-[11px] px-2.5 py-1 rounded-full font-black tracking-widest uppercase">CASE STUDY</span><h2 class="text-2xl font-black italic tracking-tight">${kw.kr}</h2></div>
+              return `<div class="mb-12 animate-fade-in text-[15px]"><div class="bg-slate-900 rounded-[2rem] p-7 text-white mb-6 shadow-2xl text-[15px]"><div class="flex items-center gap-2 mb-2 text-[15px]"><span class="bg-blue-600 text-[12px] px-2.5 py-1 rounded-full font-black tracking-widest uppercase">CASE STUDY</span><h2 class="text-2xl font-black italic tracking-tight text-[15px]">${kw.kr}</h2></div>
                   <p class="text-[15px] text-slate-400 font-medium italic opacity-80 text-[15px]">${kw.en}</p><div class="bg-white/5 p-5 rounded-2xl border border-white/10 text-[15px]"><p class="text-[15px] text-slate-300 leading-relaxed text-justify font-light text-[15px]">${kw.summary}</p></div></div>
                   <div class="grid gap-8 text-[15px]">${Object.entries(res).map(([k, v]) => `<div class="bg-white p-7 rounded-3xl shadow-sm border border-slate-100 text-[15px]"><h4 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]"><div class="w-1.5 h-1.5 rounded-full bg-blue-600 text-[15px]"></div> ${k}</h4><p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px]">${v}</p></div>`).join('')}</div></div>`;
             }).join('');
@@ -585,12 +587,12 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             const steepList = Array.isArray(state.steepResult) ? state.steepResult : [];
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("과거-현재-미래 분석", 2)}<div class="space-y-8 text-[15px]">${steepList.map(item => `<div class="bg-white rounded-[2rem] p-7 shadow-sm border border-slate-100 text-[15px]"><h3 class="text-2xl font-black mb-8 text-slate-900 flex items-center gap-2 text-[15px]"><div class="w-2 h-8 bg-dark-blue rounded-full"></div>${item.keyword}</h3>
                 ${['past', 'present', 'future'].map(t => `<div class="mb-10 last:mb-0 text-[15px] text-[15px]"><div class="text-[16px] font-black uppercase text-blue-600 mb-4 tracking-[0.2em] flex items-center gap-2 text-[15px]">${t}</div><p class="text-[16px] leading-[1.8] text-slate-800 text-justify font-medium mb-6 opacity-95 text-[15px]">${item.timeline[t].desc}</p>
-                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3 text-[15px]">${Object.entries(item.timeline[t].steep).map(([k,v]) => `<div class="mb-3 last:mb-0 text-[15px]"><span class="font-black text-slate-900 uppercase text-[15px]">${STEEP_MAP[k.toLowerCase()] || k.toUpperCase()} : </span><span class="text-slate-700 font-medium leading-relaxed text-[15px]">${v}</span></div>`).join('')}</div></div>`).join('')}</div>`).join('')}</div>
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3 text-[15px]">${Object.entries(item.timeline[t].steep).map(([k,v]) => `<div class="mb-3 last:mb-0 text-[15px]"><span class="font-black text-slate-900 uppercase text-[15px]">${STEEP_MAP[k.toLowerCase()] || k.toUpperCase()} : </span><span class="text-slate-700 font-medium leading-relaxed text-[15px] text-[15px] text-[15px]">${v}</span></div>`).join('')}</div></div>`).join('')}</div>`).join('')}</div>
               ${renderAIQuestionBox('steepResult', 'qa-input-4')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 5})" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold text-[15px] shadow-xl active:scale-95 transition-all text-[15px]">미래 트렌드 예측하기</button></div></div>`;
             break;
           case 5:
             content += `<div class="pt-20 px-6 min-h-screen flex flex-col justify-center text-center animate-fade-in text-[15px]">${renderHeader("미래 트렌드 예측하기", 4)}<h2 class="text-3xl font-black mb-2 tracking-tight text-slate-900 text-[15px]">미래 예측 연도 설정</h2><div class="text-6xl font-black text-purple-600 mb-10 tracking-tighter animate-pulse text-[15px]" id="year-display">${state.targetYear}</div>
-                <input type="range" min="2026" max="2035" value="${state.targetYear}" oninput="document.getElementById('year-display').innerText = this.value; state.targetYear = parseInt(this.value);" onchange="setState({ targetYear: parseInt(this.value) });" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-600 mb-20">
+                <input type="range" min="2026" max="2035" value="${state.targetYear}" oninput="document.getElementById('year-display').innerText = this.value; state.targetYear = parseInt(this.value);" onchange="setState({ targetYear: parseInt(this.value) });" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-600 mb-20 text-[15px]">
                 <div class="fixed bottom-0 left-0 right-0 p-5 bg-white border-t max-w-[430px] mx-auto shadow-2xl z-[60] text-[15px]"><button onclick="Actions.runScenario()" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px]">미래 예측하기</button></div></div>`;
             break;
           case 6:
@@ -604,23 +606,23 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                 ${renderAIQuestionBox('futureScenario', 'qa-input-6')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 7})" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px]">통합 추론 진행</button></div></div>`;
             break;
           case 7: 
-            content += `<div class="pt-20 px-6 min-h-screen flex flex-col justify-center animate-fade-in text-[15px] text-[15px]">${renderHeader("추론 진행 목적", 6)}<div class="mb-12 text-[15px]"><i data-lucide="lightbulb" class="w-14 h-14 mx-auto text-yellow-500 mb-6 animate-bounce text-[15px]"></i>
+            content += `<div class="pt-20 px-6 min-h-screen flex flex-col justify-center animate-fade-in text-[15px] text-[15px] text-[15px]">${renderHeader("추론 진행 목적", 6)}<div class="mb-12 text-[15px]"><i data-lucide="lightbulb" class="w-14 h-14 mx-auto text-yellow-500 mb-6 animate-bounce text-[15px]"></i>
                 <h2 class="text-2xl font-black text-slate-900 tracking-tight leading-tight text-left italic text-[15px]">선택한 트렌드와 미래 예측 트렌드를 바탕으로 추론하고 컨셉 도출할 과제를 입력해 주세요</h2><p class="text-slate-400 text-[15px] mt-4 font-medium text-left text-[15px]">사례 : 2030년 TV UX 신규 컨셉</p></div>
                 <textarea id="research-topic-input" oninput="state.researchTopic = this.value;" onchange="setState({ researchTopic: this.value })" class="w-full h-36 p-5 rounded-2xl border border-slate-200 mb-6 text-lg focus:border-indigo-500 outline-none font-medium leading-relaxed text-[15px] text-[15px]" placeholder="여기에 입력하세요...">${state.researchTopic}</textarea>
                 <div class="fixed bottom-0 left-0 right-0 p-5 bg-white border-t max-w-[430px] mx-auto shadow-2xl z-[60] text-[15px]"><button onclick="Actions.runReasoning();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px]">통합 추론 진행</button></div></div>`;
             break;
           case 8: 
             const reRes = state.reasoningResult;
-            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px]">${renderHeader("통합 추론 진행", 7)}<div class="mb-8 text-center text-[15px]"><h2 class="text-2xl font-black text-slate-900 tracking-tight text-[15px]">통합 추론 리포트</h2></div>
-                <div class="space-y-6 mb-10 text-[15px]">${reRes.insights.map((ins, i) => `<div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-blue-900 font-black text-[17px] leading-[1.8] mb-1 tracking-tight text-[15px]">${ins.headline}</h3><p class="text-slate-600 text-[15px] leading-[1.8] text-justify font-medium whitespace-pre-line text-[15px]">${ins.description}</p></div>`).join('')}</div>
+            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px] text-[15px] text-[15px]">${renderHeader("통합 추론 진행", 7)}<div class="mb-8 text-center text-[15px]"><h2 class="text-2xl font-black text-slate-900 tracking-tight text-[15px]">통합 추론 리포트</h2></div>
+                <div class="space-y-6 mb-10 text-[15px] text-[15px]">${reRes.insights.map((ins, i) => `<div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-blue-900 font-black text-[17px] leading-[1.8] mb-1 tracking-tight text-[15px]">${ins.headline}</h3><p class="text-slate-600 text-[15px] leading-[1.8] text-justify font-medium whitespace-pre-line text-[15px]">${ins.description}</p></div>`).join('')}</div>
                 <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]"><div class="flex items-center gap-2 text-white text-[15px]"><i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i><span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span><button onclick="Actions.runReasoning(document.getElementById('reasoning-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button></div>
                   <input type="text" id="reasoning-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 더 경제적인 관점으로 수정해줘"></div>
                 ${renderAIQuestionBox('reasoningResult', 'qa-input-8')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 9, designGoal: state.researchTopic}); Actions.runIdeation();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold active:scale-95 transition-all text-[15px]">디자인 컨셉 가설 제안</button></div></div>`;
             break;
           case 9:
-            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("디자인 컨셉 가설 제안", 8)}<div class="space-y-12">
+            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px]">${renderHeader("디자인 컨셉 가설 제안", 8)}<div class="space-y-12">
                 ${state.concepts.map((c, i) => { const formattedCoreValue = c.coreValue.replace(/(Who:|Purpose:|Service:)/g, '<span class="text-blue-600 font-black">$1</span>');
-                  return `<div class="animate-fade-in text-[15px]"><div class="mb-4 text-left px-2 text-[15px]"><p class="text-[15px] text-indigo-600 font-black leading-relaxed whitespace-pre-line text-[15px]">${c.persona}</p></div>
+                  return `<div class="animate-fade-in text-[15px] text-[15px]"><div class="mb-4 text-left px-2 text-[15px]"><p class="text-[15px] text-indigo-600 font-black leading-relaxed whitespace-pre-line text-[15px]">${c.persona}</p></div>
                   <div class="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 text-[15px]"><h3 class="text-2xl font-black mb-8 tracking-tight text-slate-900 text-left text-[15px]">${i+1}. ${c.title}</h3>
                     <div class="space-y-8 text-[15px]"><div class="text-[15px]"><h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-3 text-[15px]">CORE VALUE</h4><div class="font-bold text-[17px] text-slate-800 break-keep leading-[1.8] whitespace-pre-line text-[15px] text-[15px]">${formattedCoreValue}</div></div>
                       <div class="text-[15px]"><h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-4 text-[15px]">KEY FEATURES</h4><ul class="space-y-6 text-[15px]">${c.keyFeatures.map(f => `<li class="space-y-1 text-[15px]"><div class="text-[17px] text-slate-900 font-black text-[15px]">${typeof f === 'string' ? f : f.title}</div>
@@ -633,7 +635,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             break;
           case 10:
             const bRes = state.benchmarkResult;
-            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px]">${renderHeader("컨셉 가설 연관 케이스스터디", 9)}<div class="mb-8 text-center text-[15px]"><span class="text-blue-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 block text-[15px]">Selected Concept</span><h2 class="text-2xl font-black text-slate-900 break-keep leading-tight italic text-[15px]">${bRes.selectedConceptName}</h2></div>
+            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px] text-[15px] text-[15px]">${renderHeader("컨셉 가설 연관 케이스스터디", 9)}<div class="mb-8 text-center text-[15px]"><span class="text-blue-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 block text-[15px]">Selected Concept</span><h2 class="text-2xl font-black text-slate-900 break-keep leading-tight italic text-[15px]">${bRes.selectedConceptName}</h2></div>
                 <div class="space-y-12 text-[15px]">${bRes.cases.map((c, i) => `<div class="animate-fade-in text-[15px]"><div class="bg-slate-900 rounded-[2rem] p-7 text-white mb-6 shadow-2xl text-[15px] text-[15px]"><div class="flex items-center gap-2 mb-2 text-[15px]"><span class="bg-blue-600 text-[11px] px-2.5 py-1 rounded-full font-black tracking-widest uppercase text-[15px]">CASE STUDY</span><h2 class="text-2xl font-black italic tracking-tight text-[15px]">${c.caseName}</h2></div>
                       <div class="bg-white/5 p-5 rounded-2xl border border-white/10 text-[15px]"><p class="text-[15px] text-slate-300 leading-relaxed text-justify font-light whitespace-pre-line text-[15px]">${c.caseCharacteristics}</p></div></div>
                     <div class="grid gap-6 text-[15px]"><div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden text-[15px] text-[15px]"><h4 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]"><div class="w-2 h-2 rounded-full bg-blue-600 text-[15px]"></div> SUCCESS FACTOR</h4><p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px]">${c.successFactor}</p></div>
