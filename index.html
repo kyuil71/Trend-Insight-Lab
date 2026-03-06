@@ -34,18 +34,14 @@
   <div id="root"></div>
 
   <script type="module">
-    /**
-     * [수정 내역]
-     * 1. Firebase 초기화 및 인증 관련 코드 완전 제거 (독립 실행형 최적화)
-     * 2. CONFIG.MODEL_NAME을 "gemini-flash" 별칭으로 변경 (최신 모델 자동 적용)
-     */
+    // Firebase related imports and initialization code removed as requested
 
     (async function() {
       /* =========================================================
          1. CONFIGURATION & DATA (Optimized for Personal API)
          ========================================================= */
       const CONFIG = {
-        MODEL_NAME: "gemini-flash", 
+        MODEL_NAME: "gemini-2.5-flash", 
         SESSION_KEY_API: "trendInsightApiKey_v18",
         ENV_API_KEY: "" 
       };
@@ -87,7 +83,7 @@
           { code: "T26-01", kr: "휴먼인더루프", en: "Human-in-the-loop", summary: "AI 자동화 시스템이 고도화될수록 오히려 인간의 개입과 판단이 중요해지는 현상입니다. AI가 처리하지 못하는 예외 상황이나 윤리적 판단, 창의적 결정 단계에서 인간이 필수적인 역할을 수행하며, '인간과 AI의 협업'이 완벽한 결과를 위한 필수 조건임을 의미합니다." },
           { code: "T26-02", kr: "필코노미", en: "The Feelconomy", summary: "제품의 기능이나 가성비보다 소비 과정에서 느끼는 감정과 기분(Feel)이 소비 결정의 핵심 기준이 되는 경제 현상입니다. 단순히 좋은 물건을 사는 것을 넘어, 그 과정에서 얻는 즐거움, 위로, 특별한 기분 등 정서적 만족감이 가격 이상의 가치를 창출하는 감각 중심의 경제입니다." },
           { code: "T26-03", kr: "제로클릭", en: "Zero-click", summary: "사용자가 별도로 검색하거나 앱을 실행하는 수고(Click)를 하지 않아도, AI가 맥락을 파악하여 알아서 필요한 정보를 제공하거나 기능을 수행하는 환경입니다. 사용자의 의도를 미리 예측하여 선제적으로 서비스를 제공하는 '초개인화' 기술의 정점을 보여주는 미래형 인터페이스입니다." },
-          { code: "T26-04", kr: "레디코어", en: "Ready-core", summary: "기후 재난, 팬데념, 전쟁 등 예측 불가능한 위기가 일상화됨에 따라, 생존을 위한 대비(Ready)를 삶의 중심(Core)에 두는 라이프스타일입니다. 비상 식량이나 생존 키트를 구비하는 것을 넘어, 위기 상황에서도 일상을 유지할 수 있는 회복 탄력성과 생존 기술을 습득하는 것이 필수가 되었습니다." },
+          { code: "T26-04", kr: "레디코어", en: "Ready-core", summary: "기후 재난, 팬데믹, 전쟁 등 예측 불가능한 위기가 일상화됨에 따라, 생존을 위한 대비(Ready)를 삶의 중심(Core)에 두는 라이프스타일입니다. 비상 식량이나 생존 키트를 구비하는 것을 넘어, 위기 상황에서도 일상을 유지할 수 있는 회복 탄력성과 생존 기술을 습득하는 것이 필수가 되었습니다." },
           { code: "T26-05", kr: "AX조직", en: "AX Organization", summary: "AI 전환(AI Transformation)이 단순한 도구 도입을 넘어, 조직의 일하는 방식, 의사결정 체계, 인재상까지 근본적으로 바뀐 미래형 조직입니다. 모든 구성원이 AI를 능숙하게 활용하여 업무 효율을 극대화하고, 데이터 기반의 의사결정이 조직 문화의 핵심으로 자리 잡은 기업 형태입니다." },
           { code: "T26-06", kr: "픽셀라이프", en: "Pixelated Life", summary: "건강, 수면, 자산, 시간, 감정 등 삶의 모든 영역을 디지털 데이터(픽셀) 단위로 정교하게 측정하고 기록하여 관리하는 삶의 방식입니다. 웨어러블 기기와 센서 기술의 발달로 자신의 상태를 실시간으로 모니터링하고, 데이터에 기반하여 삶의 질을 최적화하려는 '정량화된 자아' 트렌드입니다." },
           { code: "T26-07", kr: "프라이스 디코딩", en: "Price Decoding", summary: "기업이 제시하는 가격을 수동적으로 받아들이지 않고, 원가 구조와 유통 마진, 시기별 변동 추이 등을 낱낱이 해독(Decoding)하고 검증하는 똑똑한 소비자들의 등장입니다. 가격 비교 앱과 AI 분석 도구를 활용하여 최적의 구매 시점을 찾고, 가격 거품에 대해 비판적인 목소리를 내는 능동적인 소비 행태입니다." },
@@ -382,7 +378,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
       window.setState = setState;
 
       /* =========================================================
-         5. UI RENDERER & CLIPBOARD (All logic preserved)
+         CLIPBOARD UTILITY
          ========================================================= */
       window.copyReportToClipboard = () => {
         let txt = "==================================================\n   TREND INSIGHT LAB 분석 리포트\n==================================================\n\n";
@@ -491,6 +487,9 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         document.body.removeChild(textArea);
       };
 
+      /* =========================================================
+         5. UI RENDERER
+         ========================================================= */
       function renderHeader(title, onBackStep) {
         let nextStep = null;
         if (state.step === 1 && state.deepDiveResult) nextStep = 2;
@@ -593,7 +592,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                   <div class="py-2">
                     <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-[#2563EB] font-bold text-[15px] underline underline-offset-4">개인 API Key 발급받기</a>
                   </div>
-                  <input type="password" id="api-input" class="w-full p-5 bg-white border-2 border-slate-100 rounded-2xl text-center focus:ring-2 focus:ring-blue-500 outline-none text-lg placeholder:text-slate-300 font-medium text-[15px]" placeholder="API KEY 입력">
+                  <input type="password" id="api-input" class="w-full p-5 bg-white border-2 border-slate-100 rounded-2xl text-center focus:ring-2 focus:ring-blue-500 outline-none text-lg placeholder:text-white/30 font-medium text-[15px]" placeholder="API KEY 입력">
                   <p class="text-xs text-gray-500">분석을 위해 유효한 Gemini API 키를 직접 입력해 주세요. (로컬 브라우저에만 임시 유지됩니다)</p>
                   <button onclick="Actions.validateKey()" class="w-full py-5 bg-[#1E3A8A] text-white rounded-2xl font-black active:scale-95 transition-all text-[16px] shadow-lg">
                     API Key 입력 후 시작
@@ -670,14 +669,14 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                   ${Object.entries(res).map(([k, v]) => `
                     <div class="bg-white p-7 rounded-3xl shadow-sm border border-slate-100 text-[15px]">
                       <h4 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]"><div class="w-1.5 h-1.5 rounded-full bg-blue-600 text-[15px]"></div> ${k}</h4>
-                      <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px]">${formatValue(v)}</p>
+                      <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px] text-[15px] text-[15px]">${formatValue(v)}</p>
                     </div>`).join('')}
                 </div>
               </div>`;
             }).join('');
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("육하원칙 심층 분석", 1)}${deepDiveBlocks}
                 ${renderAIQuestionBox('deepDiveResult', 'qa-input-2')}
-                <div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto space-y-3 shadow-2xl z-[60] text-[15px]"><button onclick="setState({multiSelected: state.step1Keywords}); Actions.runSteep();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold active:scale-95 transition-all shadow-xl text-[15px]">과거-현재-미래 분석</button></div>
+                <div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto space-y-3 shadow-2xl z-[60] text-[15px]"><button onclick="setState({multiSelected: state.step1Keywords}); Actions.runSteep();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold active:scale-95 transition-all shadow-xl text-[15px] text-[15px]">과거-현재-미래 분석</button></div>
               </div>`;
             break;
 
@@ -709,11 +708,11 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                     <div class="space-y-8 text-[15px]">
                         <div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]">
                             <h3 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">미래 트렌드 특성</h3>
-                            <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px]">${sc.characteristics}</p>
+                            <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px] text-[15px]">${sc.characteristics}</p>
                         </div>
                         <div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]">
                             <h3 class="text-indigo-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">사용자 행동 시나리오</h3>
-                            <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line italic text-[15px]">${sc.userScenario}</p>
+                            <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line italic text-[15px] text-[15px]">${sc.userScenario}</p>
                         </div>
                     </div>
                 </div>`).join('');
@@ -722,23 +721,23 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                 ${scenarioCards}
                 <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]">
                     <div class="flex items-center gap-2 text-white text-[15px]">
-                        <i data-lucide="message-square" class="w-4 h-4 text-blue-400"></i>
-                        <span class="text-[15px] font-black uppercase tracking-widest text-blue-200">AI 수정 지시</span>
-                        <button onclick="Actions.runScenario(document.getElementById('scenario-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4"></i></button>
+                        <i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i>
+                        <span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span>
+                        <button onclick="Actions.runScenario(document.getElementById('scenario-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button>
                     </div>
                     <input type="text" id="scenario-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 더 경제적인 관점으로 수정해줘">
                 </div>
                 ${renderAIQuestionBox('futureScenario', 'qa-input-6')}
-                <div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 7})" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold text-[15px] shadow-xl active:scale-95 transition-all">통합 추론 진행</button></div></div>`;
+                <div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 7})" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold text-[15px] shadow-xl active:scale-95 transition-all text-[15px]">통합 추론 진행</button></div></div>`;
             break;
 
           case 7: 
             content += `<div class="pt-20 px-6 min-h-screen flex flex-col justify-center animate-fade-in text-[15px]">${renderHeader("추론 진행 목적", 6)}<div class="mb-12 text-[15px]">
-                <i data-lucide="lightbulb" class="w-14 h-14 mx-auto text-yellow-500 mb-6 animate-bounce"></i>
+                <i data-lucide="lightbulb" class="w-14 h-14 mx-auto text-yellow-500 mb-6 animate-bounce text-[15px]"></i>
                 <h2 class="text-2xl font-black text-slate-900 tracking-tight leading-tight text-left italic text-[15px]">선택한 트렌드와 미래 예측 트렌드를 바탕으로 추론하고 컨셉 도출할 과제를 입력해 주세요</h2>
-                <p class="text-slate-400 text-[15px] mt-4 font-medium text-left">사례 : 2030년 TV UX 신규 컨셉</p>
+                <p class="text-slate-400 text-[15px] mt-4 font-medium text-left text-[15px]">사례 : 2030년 TV UX 신규 컨셉</p>
                 </div>
-                <textarea id="research-topic-input" oninput="state.researchTopic = this.value;" onchange="setState({ researchTopic: this.value })" class="w-full h-36 p-5 rounded-2xl border border-slate-200 mb-6 text-lg focus:border-indigo-500 outline-none font-medium leading-relaxed text-[15px]" placeholder="여기에 입력하세요...">${state.researchTopic}</textarea>
+                <textarea id="research-topic-input" oninput="state.researchTopic = this.value;" onchange="setState({ researchTopic: this.value })" class="w-full h-36 p-5 rounded-2xl border border-slate-200 mb-6 text-lg focus:border-indigo-500 outline-none font-medium leading-relaxed text-[15px] text-[15px]" placeholder="여기에 입력하세요...">${state.researchTopic}</textarea>
                 <div class="fixed bottom-0 left-0 right-0 p-5 bg-white border-t max-w-[430px] mx-auto shadow-2xl z-[60] text-[15px]"><button onclick="Actions.runReasoning();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px]">통합 추론 진행</button></div></div>`;
             break;
 
@@ -747,23 +746,23 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("통합 추론 진행", 7)}<div class="mb-8 text-center text-[15px]"><h2 class="text-2xl font-black text-slate-900 tracking-tight text-[15px]">통합 추론 리포트</h2></div>
                 <div class="space-y-6 mb-10 text-[15px]">${reRes.insights.map((ins, i) => `
                     <div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]">
-                        <h3 class="text-blue-900 font-black text-[17px] leading-[1.8] mb-1 tracking-tight">
+                        <h3 class="text-blue-900 font-black text-[17px] leading-[1.8] mb-1 tracking-tight text-[15px]">
                             ${ins.headline}
                         </h3>
-                        <p class="text-slate-600 text-[15px] leading-[1.8] text-justify font-medium whitespace-pre-line">
+                        <p class="text-slate-600 text-[15px] leading-[1.8] text-justify font-medium whitespace-pre-line text-[15px]">
                             ${ins.description}
                         </p>
                     </div>`).join('')}</div>
                 <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]">
-                  <div class="flex items-center gap-2 text-white">
-                    <i data-lucide="message-square" class="w-4 h-4 text-blue-400"></i>
-                    <span class="text-[15px] font-black uppercase tracking-widest text-blue-200">AI 수정 지시</span>
-                    <button onclick="Actions.runReasoning(document.getElementById('reasoning-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4"></i></button>
+                  <div class="flex items-center gap-2 text-white text-[15px]">
+                    <i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i>
+                    <span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span>
+                    <button onclick="Actions.runReasoning(document.getElementById('reasoning-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button>
                   </div>
                   <input type="text" id="reasoning-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 더 경제적인 관점으로 수정해줘">
                 </div>
                 ${renderAIQuestionBox('reasoningResult', 'qa-input-8')}
-                <div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 9, designGoal: state.researchTopic}); Actions.runIdeation();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold text-[15px] active:scale-95 transition-all">디자인 컨셉 가설 제안</button></div></div>`;
+                <div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 9, designGoal: state.researchTopic}); Actions.runIdeation();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold text-[15px] active:scale-95 transition-all text-[15px]">디자인 컨셉 가설 제안</button></div></div>`;
             break;
 
           case 9:
@@ -773,32 +772,32 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                   
                   return `
                 <div class="animate-fade-in text-[15px]">
-                  <div class="mb-4 text-left px-2">
-                    <p class="text-[15px] text-indigo-600 font-black leading-relaxed whitespace-pre-line">
+                  <div class="mb-4 text-left px-2 text-[15px]">
+                    <p class="text-[15px] text-indigo-600 font-black leading-relaxed whitespace-pre-line text-[15px]">
                       ${c.persona}
                     </p>
                   </div>
                   <div class="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 text-[15px]">
-                    <h3 class="text-2xl font-black mb-8 tracking-tight text-slate-900 text-left">
+                    <h3 class="text-2xl font-black mb-8 tracking-tight text-slate-900 text-left text-[15px]">
                       ${i+1}. ${c.title}
                     </h3>
-                    <div class="space-y-8">
-                      <div>
-                        <h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-3">CORE VALUE</h4>
-                        <div class="font-bold text-[17px] text-slate-800 break-keep leading-[1.8] whitespace-pre-line">
+                    <div class="space-y-8 text-[15px]">
+                      <div class="text-[15px]">
+                        <h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-3 text-[15px]">CORE VALUE</h4>
+                        <div class="font-bold text-[17px] text-slate-800 break-keep leading-[1.8] whitespace-pre-line text-[15px]">
                           ${formattedCoreValue}
                         </div>
                       </div>
-                      <div>
-                        <h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-4">KEY FEATURES</h4>
-                        <ul class="space-y-6">
+                      <div class="text-[15px]">
+                        <h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-4 text-[15px]">KEY FEATURES</h4>
+                        <ul class="space-y-6 text-[15px]">
                           ${c.keyFeatures.map(f => `
-                            <li class="space-y-1">
-                              <div class="text-[17px] text-slate-900 font-black">
+                            <li class="space-y-1 text-[15px]">
+                              <div class="text-[17px] text-slate-900 font-black text-[15px]">
                                 ${typeof f === 'string' ? f : f.title}
                               </div>
                               ${typeof f !== 'string' && f.desc ? `
-                                <p class="text-[15px] text-slate-600 leading-relaxed font-medium">
+                                <p class="text-[15px] text-slate-600 leading-relaxed font-medium text-[15px]">
                                   ${f.desc}
                                 </p>
                               ` : ''}
@@ -807,9 +806,9 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                         </ul>
                       </div>
                     </div>
-                    <button onclick="Actions.runBenchmark(${i})" class="w-full mt-10 py-4 bg-slate-800 text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-3 transition-all active:scale-95 shadow-md">
-                      <div class="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                        <i data-lucide="play" class="w-3 h-3 fill-slate-800 text-slate-800 ml-0.5"></i>
+                    <button onclick="Actions.runBenchmark(${i})" class="w-full mt-10 py-4 bg-slate-800 text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-3 transition-all active:scale-95 shadow-md text-[15px]">
+                      <div class="w-6 h-6 bg-white rounded-full flex items-center justify-center text-[15px]">
+                        <i data-lucide="play" class="w-3 h-3 fill-slate-800 text-slate-800 ml-0.5 text-[15px]"></i>
                       </div>
                       케이스스터디 분석
                     </button>
@@ -818,20 +817,20 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                 `}).join('')}
               </div>
               <div class="mt-12 mb-6 px-2 text-[15px]">
-                <h3 class="text-[15px] font-black text-slate-600 uppercase tracking-widest mb-4">관점 변경하여 다시 제안받기</h3>
-                <div class="grid grid-cols-2 gap-3">
+                <h3 class="text-[15px] font-black text-slate-600 uppercase tracking-widest mb-4 text-[15px]">관점 변경하여 다시 제안받기</h3>
+                <div class="grid grid-cols-2 gap-3 text-[15px]">
                   ${["종합 관점 (General)", "인문 관점 (Humanities)", "기술 관점 (Tech)", "비즈니스 관점 (Business)"].map((label, idx) => `
-                    <button onclick="setState({perspective: '${["General", "Humanities", "Tech", "Business"][idx]}'}); Actions.runIdeation();" class="bg-white border-2 py-3.5 rounded-xl text-[15px] font-bold transition-all ${state.perspective === ["General", "Humanities", "Tech", "Business"][idx] ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-100 text-slate-500'}">
+                    <button onclick="setState({perspective: '${["General", "Humanities", "Tech", "Business"][idx]}'}); Actions.runIdeation();" class="bg-white border-2 py-3.5 rounded-xl text-[15px] font-bold transition-all ${state.perspective === ["General", "Humanities", "Tech", "Business"][idx] ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-100 text-slate-500'} text-[15px]">
                       ${label}
                     </button>
                   `).join('')}
                 </div>
               </div>
               <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]">
-                <div class="flex items-center gap-2 text-white">
-                  <i data-lucide="message-square" class="w-4 h-4 text-blue-400"></i>
-                  <span class="text-[15px] font-black uppercase tracking-widest text-blue-200">AI 수정 지시</span>
-                  <button onclick="Actions.runIdeation(document.getElementById('ideation-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4"></i></button>
+                <div class="flex items-center gap-2 text-white text-[15px]">
+                  <i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i>
+                  <span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span>
+                  <button onclick="Actions.runIdeation(document.getElementById('ideation-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button>
                 </div>
                 <input type="text" id="ideation-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 타겟을 더 좁혀서 다시 제안해줘">
               </div>
@@ -840,45 +839,45 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
 
           case 10:
             const bRes = state.benchmarkResult;
-            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("컨셉 가설 연관 케이스스터디", 9)}<div class="mb-8 text-center"><span class="text-blue-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 block">Selected Concept</span><h2 class="text-2xl font-black text-slate-900 break-keep leading-tight italic">${bRes.selectedConceptName}</h2></div>
-                <div class="space-y-12">${bRes.cases.map((c, i) => `
+            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("컨셉 가설 연관 케이스스터디", 9)}<div class="mb-8 text-center text-[15px]"><span class="text-blue-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 block text-[15px]">Selected Concept</span><h2 class="text-2xl font-black text-slate-900 break-keep leading-tight text-[15px] italic text-[15px]">${bRes.selectedConceptName}</h2></div>
+                <div class="space-y-12 text-[15px]">${bRes.cases.map((c, i) => `
                   <div class="animate-fade-in text-[15px]">
-                    <div class="bg-slate-900 rounded-[2rem] p-7 text-white mb-6 shadow-2xl">
-                      <div class="flex items-center gap-2 mb-2">
-                        <span class="bg-blue-600 text-[11px] px-2.5 py-1 rounded-full font-black tracking-widest uppercase">CASE STUDY</span>
-                        <h2 class="text-2xl font-black italic tracking-tight">${c.caseName}</h2>
+                    <div class="bg-slate-900 rounded-[2rem] p-7 text-white mb-6 shadow-2xl text-[15px]">
+                      <div class="flex items-center gap-2 mb-2 text-[15px]">
+                        <span class="bg-blue-600 text-[11px] px-2.5 py-1 rounded-full font-black tracking-widest uppercase text-[15px]">CASE STUDY</span>
+                        <h2 class="text-2xl font-black italic tracking-tight text-[15px]">${c.caseName}</h2>
                       </div>
-                      <div class="bg-white/5 p-5 rounded-2xl border border-white/10">
-                        <p class="text-[15px] text-slate-300 leading-relaxed text-justify font-light whitespace-pre-line">${c.caseCharacteristics}</p>
+                      <div class="bg-white/5 p-5 rounded-2xl border border-white/10 text-[15px]">
+                        <p class="text-[15px] text-slate-300 leading-relaxed text-justify font-light whitespace-pre-line text-[15px]">${c.caseCharacteristics}</p>
                       </div>
                     </div>
-                    <div class="grid gap-6">
-                      <div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
-                        <h4 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest">
-                          <div class="w-2 h-2 rounded-full bg-blue-600"></div> SUCCESS FACTOR
+                    <div class="grid gap-6 text-[15px]">
+                      <div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden text-[15px]">
+                        <h4 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">
+                          <div class="w-2 h-2 rounded-full bg-blue-600 text-[15px]"></div> SUCCESS FACTOR
                         </h4>
-                        <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line">${c.successFactor}</p>
+                        <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px]">${c.successFactor}</p>
                       </div>
-                      <div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-slate-100">
-                        <h4 class="text-indigo-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest">
-                          <div class="w-2 h-2 rounded-full bg-indigo-600"></div> BUSINESS RESULT
+                      <div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-slate-100 text-[15px]">
+                        <h4 class="text-indigo-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">
+                          <div class="w-2 h-2 rounded-full bg-indigo-600 text-[15px]"></div> BUSINESS RESULT
                         </h4>
-                        <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-bold opacity-95 whitespace-pre-line">${c.businessResult}</p>
+                        <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-bold opacity-95 whitespace-pre-line text-[15px]">${c.businessResult}</p>
                       </div>
-                      <div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-slate-100">
-                        <h4 class="text-purple-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest">
-                          <div class="w-2 h-2 rounded-full bg-purple-600"></div> HYPOTHESIS EXPANSION
+                      <div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-slate-100 text-[15px]">
+                        <h4 class="text-purple-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">
+                          <div class="w-2 h-2 rounded-full bg-purple-600 text-[15px]"></div> HYPOTHESIS EXPANSION
                         </h4>
-                        <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line">${c.expansionFactor}</p>
+                        <p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px]">${c.expansionFactor}</p>
                       </div>
                     </div>
                   </div>
                 `).join('')}</div>
                 <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 mt-12 text-[15px]">
-                  <div class="flex items-center gap-2 text-white">
-                    <i data-lucide="message-square" class="w-4 h-4 text-blue-400"></i>
-                    <span class="text-[15px] font-black uppercase tracking-widest text-blue-200">AI 수정 지시</span>
-                    <button onclick="Actions.runBenchmark(null, document.getElementById('benchmark-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4"></i></button>
+                  <div class="flex items-center gap-2 text-white text-[15px]">
+                    <i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i>
+                    <span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span>
+                    <button onclick="Actions.runBenchmark(null, document.getElementById('benchmark-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button>
                   </div>
                   <input type="text" id="benchmark-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 해외 스타트업 사례 위주로 다시 찾아줘">
                 </div>
@@ -911,7 +910,21 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         setState({ step1Keywords: newList });
       };
 
-      window.onload = () => { render(); };
+      window.toggleMulti = (code) => {
+        const item = Object.values(TREND_DATA).flat().find(i => i.code === code);
+        let newList = [...state.multiSelected];
+        if (newList.some(i => i.code === code)) newList = newList.filter(i => i.code !== code);
+        else if (newList.length < 2) {
+          newList.push(item);
+          setState({ expanded: { ...state.expanded, [code]: true } });
+        }
+        setState({ multiSelected: newList });
+      };
+
+      window.onload = async () => {
+        render();
+        // Authentication and loadFromCloud logic removed
+      };
 
     })();
   </script>
