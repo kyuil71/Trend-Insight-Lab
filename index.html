@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>2030 미래 트렌드 예측기</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+
+        body {
+
+            font-family: 'Pretendard', sans-serif;
+
+            background-color: #f3f4f6;
+
+        }
+
+        .fade-in {
+
+            animation: fadeIn 0.5s ease-in-out;
+
+        }
+
+        @keyframes fadeIn {
+
+            from { opacity: 0; transform: translateY(10px); }
+
+            to { opacity: 1; transform: translateY(0); }
+
+        }
+
+        .loader {
+
+            border: 4px solid #f3f3f3;
+
+            border-top: 4px solid #6366f1;
+
+            border-radius: 50%;
+
+            width: 40px;
+
+            height: 40px;
+
+            animation: spin 1s linear infinite;
+
+        }
+
+        @keyframes spin {
+
+            0% { transform: rotate(0deg); }
+
+            100% { transform: rotate(360deg); }
+
+        }
+
+    </style>
+
+</head>
+
+<body class="text-gray-800 min-h-screen flex items-center justify-center p-4">
+
+
+
+    <div id="app" class="max-w-3xl w-full bg-white rounded-2xl shadow-xl overflow-hidden fade-in">
+
+        
+
+        <!-- Header -->
+
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-8 text-center text-white">
+
+            <h1 class="text-3xl font-bold mb-2">2030 미래 트렌드 예측기 🔮</h1>
+
+            <p class="text-indigo-100">두 개의 트렌드 키워드를 결합하여 미래의 모습을 그려보세요.</p>
+
+        </div>
+
+
+
+        <!-- Input Section -->
+
+        <div id="input-section" class="p-8">
+
+            <div class="space-y-6">
+
+                
+
+                <!-- Keyword Inputs -->
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <div>
+
+                        <label for="keyword1" class="block text-sm font-medium text-gray-700 mb-2">첫 번째 트렌드 키워드</label>
+
+                        <input type="text" id="keyword1" placeholder="예: 인공지능, 비건, 메타버스..." class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+
+                    </div>
+
+                    <div>
+
+                        <label for="keyword2" class="block text-sm font-medium text-gray-700 mb-2">두 번째 트렌드 키워드</label>
+
+                        <input type="text" id="keyword2" placeholder="예: 고령화, 우주탐사, 미니멀리즘..." class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all">
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="border-t border-gray-200 pt-6">
+
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">AI 분석 방식 선택</h3>
+
+                    
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                        <!-- Mode 1: Built-in AI -->
+
+                        <label class="relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none border-indigo-500 ring-1 ring-indigo-500" id="mode-builtin-label">
+
+                            <input type="radio" name="api_mode" value="builtin" class="sr-only" checked onchange="toggleApiMode()">
+
+                            <span class="flex flex-1">
+
+                                <span class="flex flex-col">
+
+                                    <span class="block text-sm font-medium text-gray-900">기본 AI 환경 사용</span>
+
+                                    <span class="mt-1 flex items-center text-sm text-gray-500">현재 환경의 AI를 즉시 사용합니다.</span>
+
+                                </span>
+
+                            </span>
+
+                            <svg class="h-5 w-5 text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" id="mode-builtin-icon">
+
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+
+                            </svg>
+
+                        </label>
+
+
+
+                        <!-- Mode 2: Custom API -->
+
+                        <label class="relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none border-gray-300" id="mode-custom-label">
+
+                            <input type="radio" name="api_mode" value="custom" class="sr-only" onchange="toggleApiMode()">
+
+                            <span class="flex flex-1">
+
+                                <span class="flex flex-col">
+
+                                    <span class="block text-sm font-medium text-gray-900">내 API 키 사용</span>
+
+                                    <span class="mt-1 flex items-center text-sm text-gray-500">Gemini API 키를 직접 입력합니다.</span>
+
+                                </span>
+
+                            </span>
+
+                            <svg class="h-5 w-5 text-indigo-600 hidden" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" id="mode-custom-icon">
+
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+
+                            </svg>
+
+                        </label>
+
+                    </div>
+
+
+
+                    <!-- Custom API Key Input (Hidden by default) -->
+
+                    <div id="custom-api-input-container" class="mt-4 hidden fade-in">
+
+                        <label for="customApiKey" class="block text-sm font-medium text-gray-700 mb-2">Gemini API 키</label>
+
+                        <input type="password" id="customApiKey" placeholder="AIzaSy..." class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+
+                        <p class="mt-2 text-xs text-gray-500">입력하신 API 키는 브라우저에만 유지되며 외부로 전송되지 않습니다.</p>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Error Message Container -->
+
+                <div id="error-message" class="hidden bg-red-50 text-red-600 p-4 rounded-lg text-sm"></div>
+
+
+
+                <button onclick="startAnalysis()" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-4 px-8 rounded-xl transition-colors duration-200 shadow-lg flex justify-center items-center">
+
+                    미래 예측 시작하기
+
+                    <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Loading Section -->
+
+        <div id="loading-section" class="hidden p-16 text-center">
+
+            <div class="loader mx-auto mb-6"></div>
+
+            <h2 class="text-xl font-bold text-gray-800 mb-2">AI가 미래를 렌더링하고 있습니다...</h2>
+
+            <p class="text-gray-500">두 키워드의 시너지를 분석 중입니다. 잠시만 기다려 주세요.</p>
+
+        </div>
+
+
+
+        <!-- Result Section -->
+
+        <div id="result-section" class="hidden p-8 bg-gray-50">
+
+            
+
+            <div class="text-center mb-8">
+
+                <span class="inline-block py-1 px-3 rounded-full bg-indigo-100 text-indigo-800 text-sm font-semibold mb-3">2030년 예측 트렌드</span>
+
+                <h2 id="result-title" class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600"></h2>
+
+            </div>
+
+
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+
+                    <h3 id="kw1-title" class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+
+                        <span class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2 text-sm">1</span>
+
+                    </h3>
+
+                    <p id="kw1-analysis" class="text-gray-600 text-sm leading-relaxed"></p>
+
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+
+                    <h3 id="kw2-title" class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+
+                        <span class="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center mr-2 text-sm">2</span>
+
+                    </h3>
+
+                    <p id="kw2-analysis" class="text-gray-600 text-sm leading-relaxed"></p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="bg-gradient-to-br from-gray-900 to-indigo-900 rounded-2xl p-8 text-white shadow-lg mb-8 relative overflow-hidden">
+
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-5 rounded-full blur-xl"></div>
+
+                <div class="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-indigo-500 opacity-20 rounded-full blur-xl"></div>
+
+                <h3 class="text-xl font-bold mb-4 relative z-10">미래 예측 시나리오</h3>
+
+                <p id="future-prediction" class="text-gray-200 leading-relaxed relative z-10"></p>
+
+            </div>
+
+
+
+            <button onclick="resetApp()" class="w-full bg-white border-2 border-gray-200 hover:bg-gray-50 text-gray-800 font-bold py-4 px-8 rounded-xl transition-colors duration-200">
+
+                새로운 키워드로 다시 예측하기
+
+            </button>
+
+        </div>
+
+
+
+    </div>
+
+
+
+    <script>
+
+        const apiKey = "";
+
+
+
+        // UI 요소 토글 처리
+
+        function toggleApiMode() {
+
+            const mode = document.querySelector('input[name="api_mode"]:checked').value;
+
+            const builtinLabel = document.getElementById('mode-builtin-label');
+
+            const customLabel = document.getElementById('mode-custom-label');
+
+            const builtinIcon = document.getElementById('mode-builtin-icon');
+
+            const customIcon = document.getElementById('mode-custom-icon');
+
+            const customInputContainer = document.getElementById('custom-api-input-container');
+
+
+
+            if (mode === 'builtin') {
+
+                builtinLabel.classList.add('border-indigo-500', 'ring-1', 'ring-indigo-500');
+
+                builtinLabel.classList.remove('border-gray-300');
+
+                customLabel.classList.remove('border-indigo-500', 'ring-1', 'ring-indigo-500');
+
+                customLabel.classList.add('border-gray-300');
+
+                
+
+                builtinIcon.classList.remove('hidden');
+
+                customIcon.classList.add('hidden');
+
+                customInputContainer.classList.add('hidden');
+
+            } else {
+
+                customLabel.classList.add('border-indigo-500', 'ring-1', 'ring-indigo-500');
+
+                customLabel.classList.remove('border-gray-300');
+
+                builtinLabel.classList.remove('border-indigo-500', 'ring-1', 'ring-indigo-500');
+
+                builtinLabel.classList.add('border-gray-300');
+
+                
+
+                customIcon.classList.remove('hidden');
+
+                builtinIcon.classList.add('hidden');
+
+                customInputContainer.classList.remove('hidden');
+
+            }
+
+        }
+
+
+
+        // 에러 메시지 표시
+
+        function showError(message) {
+
+            const errorDiv = document.getElementById('error-message');
+
+            errorDiv.textContent = message;
+
+            errorDiv.classList.remove('hidden');
+
+            errorDiv.classList.add('fade-in');
+
+        }
+
+
+
+        function hideError() {
+
+            document.getElementById('error-message').classList.add('hidden');
+
+        }
+
+
+
+        // 화면 전환 헬퍼
+
+        function showSection(sectionId) {
+
+            ['input-section', 'loading-section', 'result-section'].forEach(id => {
+
+                document.getElementById(id).classList.add('hidden');
+
+            });
+
+            const section = document.getElementById(sectionId);
+
+            section.classList.remove('hidden');
+
+            section.classList.add('fade-in');
+
+        }
+
+
+
+        // 앱 초기화
+
+        function resetApp() {
+
+            document.getElementById('keyword1').value = '';
+
+            document.getElementById('keyword2').value = '';
+
+            hideError();
+
+            showSection('input-section');
+
+        }
+
+
+
+        // 재시도 로직이 포함된 API 호출 함수
+
+        async function fetchWithRetry(url, payload, retries = 5) {
+
+            const delays = [1000, 2000, 4000, 8000, 16000];
+
+            for (let i = 0; i < retries; i++) {
+
+                try {
+
+                    const response = await fetch(url, {
+
+                        method: 'POST',
+
+                        headers: { 'Content-Type': 'application/json' },
+
+                        body: JSON.stringify(payload)
+
+                    });
+
+                    
+
+                    if (!response.ok) {
+
+                        const errorData = await response.json().catch(() => ({}));
+
+                        throw new Error(errorData.error?.message || `API 통신 오류가 발생했습니다. (상태 코드: ${response.status})`);
+
+                    }
+
+                    
+
+                    return await response.json();
+
+                } catch (error) {
+
+                    if (i === retries - 1) throw error;
+
+                    await new Promise(res => setTimeout(res, delays[i]));
+
+                }
+
+            }
+
+        }
+
+
+
+        // 분석 시작
+
+        async function startAnalysis() {
+
+            hideError();
+
+            
+
+            const kw1 = document.getElementById('keyword1').value.trim();
+
+            const kw2 = document.getElementById('keyword2').value.trim();
+
+            const mode = document.querySelector('input[name="api_mode"]:checked').value;
+
+            const customKey = document.getElementById('customApiKey').value.trim();
+
+
+
+            // 유효성 검사
+
+            if (!kw1 || !kw2) {
+
+                showError("두 개의 트렌드 키워드를 모두 입력해 주세요.");
+
+                return;
+
+            }
+
+
+
+            let currentKey = apiKey;
+
+            let currentModel = "gemini-2.5-flash-preview-09-2025";
+
+
+
+            if (mode === 'custom') {
+
+                if (!customKey) {
+
+                    showError("직접 사용할 Gemini API 키를 입력해 주세요.");
+
+                    return;
+
+                }
+
+                currentKey = customKey;
+
+                currentModel = "gemini-2.5-flash"; // 개인 API 키 사용 시 안정적인 모델
+
+            }
+
+
+
+            // 시스템이 정상적으로 키를 인식할 수 있도록 URL 템플릿 리터럴 구성
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${currentKey}`;
+
+
+
+            showSection('loading-section');
+
+
+
+            const prompt = `
+
+사용자가 제공한 두 가지 트렌드 키워드는 다음과 같습니다.
+
+키워드 1: '${kw1}'
+
+키워드 2: '${kw2}'
+
+
+
+이 두 키워드의 현재 특성과 핵심 가치를 각각 분석해 주세요. 
+
+그리고 이 두 가지 트렌드가 융합되었을 때 2030년 우리의 일상, 산업, 또는 사회에 어떤 새로운 혁신적인 미래 트렌드가 나타날지 상세히 예측해 주세요. 
+
+답변은 반드시 한국어 존댓말(하십시오체/해요체)로 전문적이고 흥미롭게 작성해 주세요.
+
+`;
+
+
+
+            const payload = {
+
+                contents: [{ parts: [{ text: prompt }] }],
+
+                generationConfig: {
+
+                    responseMimeType: "application/json",
+
+                    responseSchema: {
+
+                        type: "OBJECT",
+
+                        properties: {
+
+                            trendName: { type: "STRING", description: "2030년 예상되는 융합 트렌드의 창의적인 이름" },
+
+                            keyword1Analysis: { type: "STRING", description: "첫 번째 키워드에 대한 심층 특성 분석 (존댓말)" },
+
+                            keyword2Analysis: { type: "STRING", description: "두 번째 키워드에 대한 심층 특성 분석 (존댓말)" },
+
+                            futurePrediction: { type: "STRING", description: "두 키워드가 결합된 2030년 미래 예측 상세 시나리오 (존댓말)" }
+
+                        },
+
+                        required: ["trendName", "keyword1Analysis", "keyword2Analysis", "futurePrediction"]
+
+                    }
+
+                }
+
+            };
+
+
+
+            try {
+
+                const data = await fetchWithRetry(apiUrl, payload);
+
+                
+
+                // 결과 파싱
+
+                const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!textResult) throw new Error("AI로부터 올바른 응답을 받지 못했습니다.");
+
+                
+
+                const resultJson = JSON.parse(textResult);
+
+
+
+                // UI 업데이트
+
+                document.getElementById('result-title').textContent = resultJson.trendName;
+
+                document.getElementById('kw1-title').innerHTML = `<span class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2 text-sm">1</span> ${kw1}`;
+
+                document.getElementById('kw1-analysis').textContent = resultJson.keyword1Analysis;
+
+                document.getElementById('kw2-title').innerHTML = `<span class="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center mr-2 text-sm">2</span> ${kw2}`;
+
+                document.getElementById('kw2-analysis').textContent = resultJson.keyword2Analysis;
+
+                document.getElementById('future-prediction').textContent = resultJson.futurePrediction;
+
+
+
+                showSection('result-section');
+
+
+
+            } catch (error) {
+
+                console.error("API Error:", error);
+
+                showSection('input-section');
+
+                showError(error.message || "분석 중 오류가 발생했습니다. API 키가 유효한지 확인하시거나 잠시 후 다시 시도해 주세요.");
+
+            }
+
+        }
+
+    </script>
+
+</body>
+
+</html>
