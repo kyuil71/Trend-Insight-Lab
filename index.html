@@ -90,6 +90,9 @@
         ]
       };
 
+      /* =========================================================
+         UPDATED PROMPTS (Refined for Clarity & Narrative)
+         ========================================================= */
       const PROMPTS = {
         "5W1H": `You are a Trend Analyst. Analyze EACH keyword using 5W1H framework.
 Return a JSON object where EACH KEY is the trend's CODE (e.g., T24-01).
@@ -132,10 +135,11 @@ Derive 3 most critical integrated insights.
 ③ [Subject]가 [Target/Future Context]에서 핵심적인 [Role/Function]로 중요해질 것이다
 ④ [Subject A]의 역할이 [Current Role]에서 [Future Role/Platform]로 바뀌고 있다
 
-[CONTENT RULE]: You MUST provide a rich and deep analysis. Each description should be approximately 30% longer than a standard summary, providing detailed context, strategic implications, and logical reasoning. Do not be brief.
+[CONTENT RULE]: You MUST provide a rich and deep analysis. Each description should be approximately 30% longer than a standard summary. 
+[CLARITY INSTRUCTION]: Write in easy-to-understand Korean. Use clear cause-and-effect reasoning and relatable metaphors instead of overly complex jargon. Ensure a university student can immediately grasp the strategic logic.
 
 Return a JSON object: { "insights": [ { "headline": "...", "description": "..." } ] }.
-[TONE]: Write in Korean. Profound but clear language.`,
+[TONE]: Write in Korean. Insightful but very clear and friendly language.`,
 
         "CONCEPTS": `You are a Creative Director. Generate 3 design concepts.
 Return RAW JSON array of 3 objects.
@@ -153,9 +157,15 @@ Service: [AI-based solution/proposal]"
 
 [TONE]: Korean. Clear and engaging.`,
 
-        "BENCHMARK": `You are a Global Business Analyst. Based on the selected concept, find 2 similar existing success cases.
+        "BENCHMARK": `You are a Global Business Analyst. Based on the selected concept: [Concept Title] - [Core Value], find 2 similar existing success cases.
+[CRITICAL]: Famous US/Europe brands. Quantitative data required.
+[CRITICAL INSTRUCTION FOR caseName & caseCharacteristics]:
+- caseName: Must be in the format "English Name (Korean Name)". E.g., "Virta Health (비르타 헬스)"
+- caseCharacteristics: Must be a detailed narrative summary (approx. 5 sentences). 
+[CONTENT RULE]: Explicitly describe When (founding year), Who (founder), How (core technology or business method), and What (main business/goal). Ensure a clear and comprehensive overview of the company's characteristics.
+
 Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "caseCharacteristics": "...", "successFactor": "...", "businessResult": "...", "expansionFactor": "..." } ] }
-[TONE]: Korean. Storytelling format.`,
+[TONE]: Korean. Informative storytelling format.`,
 
         "ASK_AI": `You are a Professional Trend Consultant. Answer the user's question based on the provided context in Korean. Return JSON with key "answer".`
       };
@@ -190,22 +200,14 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         qaHistory: []
       };
 
-      window.state = state;
-
       async function setState(newState) {
         const prevStep = state.step;
         if (newState.step !== undefined) state.maxStepReached = Math.max(state.maxStepReached, newState.step);
-        
         state = { ...state, ...newState };
         window.state = state;
-        
-        const needsRender = Object.keys(newState).some(k => !['designGoal', 'researchTopic'].includes(k)) || newState.step !== undefined || newState.qaModal !== undefined;
-        
-        if (needsRender) render();
+        render();
         if (newState.step !== undefined && newState.step !== prevStep) window.scrollTo(0, 0);
       }
-      
-      // Expose setState to global window object
       window.setState = setState;
 
       /* =========================================================
@@ -227,11 +229,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                 body: JSON.stringify({
                   contents: [{ parts: [{ text: userPrompt }] }],
                   systemInstruction: { parts: [{ text: systemPrompt }] },
-                  generationConfig: { 
-                    responseMimeType: "application/json",
-                    temperature: 0.7,
-                    maxOutputTokens: 8192
-                  },
+                  generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: 8192 },
                   safetySettings: [
                     { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
                     { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -266,14 +264,9 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         async validateKey() {
           const input = document.getElementById('api-input');
           let keyToUse = input?.value || state.apiKey;
-          
-          if (!keyToUse) {
-            setState({ errorMsg: "Gemini API 키를 입력해 주세요." });
-            return;
-          }
+          if (!keyToUse) { setState({ errorMsg: "Gemini API 키를 입력해 주세요." }); return; }
 
           setState({ apiKey: keyToUse, isAnalyzing: true, loadingMsg: "인증 처리 중..." });
-          
           const test = await callGemini("Say 'OK' in JSON: {\"status\":\"OK\"}", "Test Connection");
           
           if (test) {
@@ -281,7 +274,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             setState({ step: 0, isAnalyzing: false });
           } else {
             sessionStorage.removeItem(CONFIG.SESSION_KEY_API);
-            setState({ apiKey: "", errorMsg: "유효하지 않은 API 키이거나 통신 오류가 발생했습니다. 키를 다시 확인해 주세요.", isAnalyzing: false });
+            setState({ apiKey: "", errorMsg: "유효하지 않은 API 키입니다.", isAnalyzing: false });
           }
         },
 
@@ -290,40 +283,26 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
           if (saved) {
             try {
               const data = JSON.parse(saved);
-              const currentApiKey = state.apiKey;
-              setState({ ...data, apiKey: currentApiKey, isAnalyzing: false });
+              setState({ ...data, apiKey: state.apiKey, isAnalyzing: false });
               return true;
-            } catch (e) {
-              console.error("Local load failed", e);
-            }
+            } catch (e) { console.error("Local load failed", e); }
           }
-          alert("저장된 프로젝트 데이터가 없습니다.");
+          const toast = document.createElement("div");
+          toast.innerText = "저장된 프로젝트 데이터가 없습니다.";
+          toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full text-[15px] font-bold z-[10000] animate-fade-in shadow-xl";
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 2500);
           return false;
         },
 
         startNewProject() {
           const currentApiKey = state.apiKey;
           const initialState = {
-            step: 1,
-            maxStepReached: -1,
-            selectedYear: "2024",
-            step1Keywords: [],
-            multiSelected: [],
-            deepDiveResult: null,
-            steepResult: null,
-            targetYear: 2030,
-            futureScenario: null,
-            reasoningResult: null,
-            designGoal: "",
-            researchTopic: "", 
-            perspective: "General", 
-            concepts: [],
-            allGeneratedConcepts: [], 
-            benchmarkResult: null,
-            selectedConceptIndex: -1,
-            expanded: {},
-            qaModal: { visible: false, question: "", answer: "" },
-            qaHistory: []
+            step: 1, maxStepReached: -1, selectedYear: "2024", step1Keywords: [], multiSelected: [],
+            deepDiveResult: null, steepResult: null, targetYear: 2030, futureScenario: null,
+            reasoningResult: null, designGoal: "", researchTopic: "", perspective: "General",
+            concepts: [], allGeneratedConcepts: [], benchmarkResult: null, selectedConceptIndex: -1,
+            expanded: {}, qaModal: { visible: false, question: "", answer: "" }, qaHistory: []
           };
           setState({ ...initialState, apiKey: currentApiKey });
         },
@@ -343,10 +322,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
           if (res) {
             const answerText = typeof res === 'string' ? res : (res.answer || JSON.stringify(res));
             const newHistory = [...(state.qaHistory || []), { q: question, a: answerText }];
-            setState({ 
-                qaModal: { visible: true, question: question, answer: answerText },
-                qaHistory: newHistory
-            });
+            setState({ qaModal: { visible: true, question: question, answer: answerText }, qaHistory: newHistory });
           }
         },
 
@@ -355,17 +331,15 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
           const targetKeywords = state.multiSelected.length > 0 ? state.multiSelected : state.step1Keywords;
           const kws = targetKeywords.map(k => `${k.kr}: ${k.summary}`).join("\n");
           let res = await callGemini(PROMPTS["STEEP"], `Keywords:\n${kws}`);
-          
           if (res) {
-            if (!Array.isArray(res)) res = res.steepResult || res.results || res.data || [res];
+            if (!Array.isArray(res)) res = res.steepResult || res.results || [res];
             setState({ steepResult: res, step: 4, multiSelected: targetKeywords });
           }
         },
 
         async runScenario(instruction = null) {
           setState({ loadingMsg: instruction ? "미래 트렌드 수정 중..." : "미래 예측 수행 중..." });
-          const targetKeywords = (state.multiSelected.length > 0 ? state.multiSelected : state.step1Keywords);
-          const kws = targetKeywords.map(k => `${k.kr}: ${k.summary}`).join("\n");
+          const kws = (state.multiSelected.length > 0 ? state.multiSelected : state.step1Keywords).map(k => `${k.kr}: ${k.summary}`).join("\n");
           let prompt = `Trends:\n${kws}\nYear: ${state.targetYear}`;
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
           const res = await callGemini(PROMPTS["SCENARIO"], prompt);
@@ -400,18 +374,16 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
           if (index !== null) setState({ selectedConceptIndex: idx });
           const selected = state.concepts[idx];
           setState({ loadingMsg: "유사 글로벌 성공 사례 분석 중..." });
-          let prompt = `Concept: ${selected.title}, Core Value: ${selected.coreValue}.`;
+          let prompt = `Concept: ${selected.title}, Value: ${selected.coreValue}.`;
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
           const res = await callGemini(PROMPTS["BENCHMARK"], prompt);
           if (res) setState({ benchmarkResult: res, step: 10 });
         }
       };
-      
-      // Expose Actions to global window object
       window.Actions = Actions;
 
       /* =========================================================
-         5. UI RENDERERS
+         5. RENDER UTILS & CLIPBOARD
          ========================================================= */
       function renderHeader(title, onBackStep) {
         let nextStep = null;
@@ -427,39 +399,100 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         return `
           <header class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/50 px-4 h-14 flex items-center justify-between max-w-[430px] mx-auto overflow-hidden">
             <div class="flex items-center gap-2 overflow-hidden flex-1">
-              ${onBackStep !== undefined ? `<button onclick="setState({step: ${onBackStep}})" class="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-all flex-shrink-0"><i data-lucide="chevron-left" class="w-6 h-6 text-slate-500"></i></button>` : ""}
+              ${onBackStep !== undefined ? `<button onclick="setState({step: ${onBackStep}})" class="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-all flex-shrink-0 text-slate-500"><i data-lucide="chevron-left" class="w-6 h-6"></i></button>` : ""}
               <h1 class="font-bold text-lg truncate text-[15px] text-slate-900">${title}</h1>
             </div>
-            <div class="flex items-center gap-1 flex-shrink-0">
+            <div class="flex items-center gap-1 flex-shrink-0 text-slate-500">
               ${nextStep !== null ? `<button onclick="setState({step: ${nextStep}})" class="p-2 rounded-full hover:bg-slate-100 transition-all flex-shrink-0"><i data-lucide="chevron-right" class="w-6 h-6 text-slate-900"></i></button>` : ""}
-              <button onclick="window.copyReportToClipboard()" class="p-2 rounded-full hover:bg-slate-100 transition-all flex-shrink-0"><i data-lucide="copy" class="w-6 h-6 text-slate-500"></i></button>
-              <button onclick="setState({step: 0})" class="p-2 rounded-full hover:bg-slate-100 transition-all flex-shrink-0"><i data-lucide="home" class="w-6 h-6 text-slate-500"></i></button>
+              <button onclick="window.copyReportToClipboard()" class="p-2 rounded-full hover:bg-slate-100 transition-all flex-shrink-0"><i data-lucide="copy" class="w-6 h-6"></i></button>
+              <button onclick="setState({step: 0})" class="p-2 rounded-full hover:bg-slate-100 transition-all flex-shrink-0"><i data-lucide="home" class="w-6 h-6"></i></button>
             </div>
           </header>`;
       }
 
       function renderAIQuestionBox(contextData, inputId) {
-        return `
-          <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 my-8 text-[15px]">
-              <div class="flex items-center gap-2 text-white">
-                  <i data-lucide="message-square" class="w-4 h-4 text-blue-400"></i>
-                  <span class="text-[15px] font-black uppercase tracking-widest text-[15px]">AI에게 질문하기</span>
-                  <button onclick="Actions.askAI(document.getElementById('${inputId}').value, state.${contextData})" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90">
-                      <i data-lucide="send" class="w-4 h-4"></i>
-                  </button>
-              </div>
-              <input type="text" id="${inputId}" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30" placeholder="분석 결과에 대해 궁금한 점을 물어보세요">
-          </div>
-        `;
+        return `<div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 my-8 text-[15px]">
+            <div class="flex items-center gap-2 text-white"><i data-lucide="message-square" class="w-4 h-4 text-blue-400"></i><span class="font-black uppercase tracking-widest text-[15px]">AI에게 질문하기</span>
+            <button onclick="Actions.askAI(document.getElementById('${inputId}').value, state.${contextData})" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90"><i data-lucide="send" class="w-4 h-4"></i></button></div>
+            <input type="text" id="${inputId}" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30" placeholder="분석 결과에 대해 궁금한 점을 물어보세요"></div>`;
       }
 
+      window.copyReportToClipboard = () => {
+        let txt = "==================================================\n   TREND INSIGHT LAB 분석 리포트\n==================================================\n\n";
+        if (state.selectedYear) txt += `[1. 분석 대상 연도]\n- ${state.selectedYear}년\n\n`;
+        if (state.step1Keywords.length > 0) {
+          txt += `[2. 선택 트렌드 및 심층 분석]\n`;
+          state.step1Keywords.forEach(k => {
+            txt += `● ${k.kr} (${k.en})\n 요약: ${k.summary}\n`;
+            const dd = state.deepDiveResult?.[k.code] || state.deepDiveResult?.[k.code.toLowerCase()] || state.deepDiveResult?.[k.kr];
+            if (dd) txt += `   - Who: ${dd.who}\n   - When: ${dd.when}\n   - Where: ${dd.where}\n   - What: ${dd.what}\n   - Why: ${dd.why}\n   - How: ${dd.how}\n`;
+            txt += `\n`;
+          });
+        }
+        if (state.steepResult) {
+          txt += `[3. 과거-현재-미래 STEEP 입체 분석]\n`;
+          state.steepResult.forEach(item => {
+            txt += `■ 키워드: ${item.keyword}\n`;
+            ['past', 'present', 'future'].forEach(t => {
+              txt += `   <${t.toUpperCase()}>\n 전략 기술: ${item.timeline[t].desc}\n`;
+              Object.entries(item.timeline[t].steep).forEach(([k, v]) => { txt += `   - ${k.toUpperCase()}: ${v}\n`; });
+            });
+            txt += `\n`;
+          });
+        }
+        if (state.futureScenario) {
+          txt += `[4. 미래 예측 트렌드 (${state.targetYear}년)]\n`;
+          (state.futureScenario.trends || [state.futureScenario]).forEach((t, i) => {
+             txt += `● 미래 트렌드 #${i+1}: ${t.futureTrendKeyword}\n- 특성 요약:\n${t.characteristics}\n- 사용자 시나리오:\n${t.userScenario}\n\n`;
+          });
+        }
+        if (state.researchTopic) txt += `[5. 추론 진행 목적]\n- 과제: ${state.researchTopic}\n\n`;
+        if (state.reasoningResult) {
+          txt += `[6. 통합 인사이트 추론 리포트]\n`;
+          state.reasoningResult.insights.forEach((ins, i) => { txt += `${i+1}. ${ins.headline}\n   : ${ins.description}\n`; });
+          txt += `\n`;
+        }
+        if (state.allGeneratedConcepts && state.allGeneratedConcepts.length > 0) {
+          txt += `[7. 디자인 컨셉 가설 제안 (누적)]\n`;
+          state.allGeneratedConcepts.forEach((c, i) => {
+            txt += `● 컨셉 #${i+1}: ${c.title}\n 타겟: ${c.persona}\n 핵심가치: ${c.coreValue}\n\n`;
+          });
+        }
+        if (state.benchmarkResult) {
+          txt += `[8. 글로벌 벤치마킹 분석]\n`;
+          state.benchmarkResult.cases.forEach((c, i) => {
+            txt += `▶ Case #${i+1}. ${c.caseName}\n 특징: ${c.caseCharacteristics}\n 성공요인: ${c.successFactor}\n 비즈니스 결과: ${c.businessResult}\n 가설 확장성: ${c.expansionFactor}\n`;
+          });
+          txt += `\n`;
+        }
+        if (state.qaHistory && state.qaHistory.length > 0) {
+          txt += `[9. AI Q&A 대화 기록]\n`;
+          state.qaHistory.forEach((item, idx) => { txt += `질문 ${idx + 1}: ${item.q}\n답변: ${item.a}\n\n`; });
+        }
+
+        const textArea = document.createElement("textarea");
+        textArea.value = txt; document.body.appendChild(textArea); textArea.select();
+        try {
+          document.execCommand('copy');
+          const toast = document.createElement("div");
+          toast.innerText = "리포트가 클립보드에 복사되었습니다.";
+          toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-[15px] font-bold z-[10000] animate-fade-in shadow-xl";
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 2500);
+        } catch (err) { console.error("Copy failed", err); }
+        document.body.removeChild(textArea);
+      };
+
+      /* =========================================================
+         6. MAIN RENDERER
+         ========================================================= */
       function render() {
         const root = document.getElementById('root');
         const containerClass = "w-full max-w-[430px] mx-auto bg-white min-h-screen relative font-sans text-slate-900 pb-10 overflow-x-hidden shadow-2xl";
         let content = "";
 
         if (state.isAnalyzing) {
-          content = `<div class="fixed inset-0 z-[10000] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center max-w-[430px] mx-auto animate-fade-in">
+          content = `<div class="fixed inset-0 z-[10000] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center max-w-[430px] mx-auto animate-fade-in text-[15px]">
             <div class="w-20 h-20 rounded-full border-[6px] border-slate-100 border-t-blue-600 animate-spin mb-8 flex items-center justify-center"><i data-lucide="sparkles" class="text-blue-600 animate-pulse"></i></div>
             <h3 class="text-xl font-bold text-slate-900 mb-3 tracking-tighter text-[15px]">AI 분석 중</h3>
             <p class="text-[15px] text-slate-600">${state.loadingMsg}</p>
@@ -467,7 +500,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         }
 
         if (state.errorMsg) {
-          content += `<div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm">
+          content += `<div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm text-[15px]">
             <div class="bg-white p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl animate-scale-in">
               <i data-lucide="alert-triangle" class="text-red-500 mx-auto mb-4 w-12 h-12"></i>
               <p class="text-slate-700 mb-6 font-bold text-[15px]">${state.errorMsg}</p>
@@ -477,55 +510,34 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         }
 
         if (state.qaModal.visible) {
-          content += `<div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm animate-fade-in">
-              <div class="bg-slate-800 text-white p-8 rounded-3xl w-full max-w-sm shadow-2xl animate-scale-in relative border border-white/10">
-                <button onclick="setState({ qaModal: { visible: false, question: '', answer: '' } })" class="absolute top-5 right-5 text-white/50 hover:text-white transition-all">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-                <div class="mb-6 flex items-center gap-2 text-[15px]">
-                  <div class="w-2 h-6 bg-blue-500 rounded-full"></div>
-                  <h4 class="text-[15px] font-black uppercase tracking-widest text-blue-400">AI 컨설턴트 답변</h4>
-                </div>
-                <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 no-scrollbar text-[15px]">
-                  <div class="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <p class="text-[15px] font-bold text-slate-400 mb-1">Q.</p>
-                    <p class="text-[15px] text-white/90 font-medium">${state.qaModal.question}</p>
-                  </div>
-                  <div class="pt-2">
-                    <p class="text-[15px] leading-[1.8] text-slate-200 text-justify font-medium whitespace-pre-line">${state.qaModal.answer}</p>
-                  </div>
-                </div>
+          content += `<div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm animate-fade-in text-[15px]">
+              <div class="bg-slate-800 text-white p-8 rounded-3xl w-full max-w-sm shadow-2xl animate-scale-in relative border border-white/10 text-[15px]">
+                <button onclick="setState({ qaModal: { visible: false, question: '', answer: '' } })" class="absolute top-5 right-5 text-white/50 hover:text-white transition-all"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <div class="mb-6 flex items-center gap-2"><div class="w-2 h-6 bg-blue-500 rounded-full"></div><h4 class="text-[15px] font-black uppercase tracking-widest text-blue-400">AI 컨설턴트 답변</h4></div>
+                <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 no-scrollbar text-[15px]"><div class="p-4 bg-white/5 rounded-2xl border border-white/5"><p class="text-[15px] font-bold text-slate-400 mb-1">Q.</p><p class="text-[15px] text-white/90 font-medium">${state.qaModal.question}</p></div>
+                <div class="pt-2"><p class="text-[15px] leading-[1.8] text-slate-200 text-justify font-medium whitespace-pre-line">${state.qaModal.answer}</p></div></div>
               </div>
           </div>`;
         }
 
         switch (state.step) {
           case -1:
-            content += `
-              <div class="min-h-screen flex flex-col items-center justify-center p-10 bg-white text-center animate-fade-in relative">
-                <div class="w-24 h-24 bg-[#2563EB] rounded-full flex items-center justify-center mb-10 shadow-[0_10px_20px_rgba(37,99,235,0.3)] transition-all">
-                  <i data-lucide="fingerprint" class="text-white w-12 h-12"></i>
-                </div>
-                <div class="w-full mb-2 px-2">
+            content += `<div class="min-h-screen flex flex-col items-center justify-center p-10 bg-white text-center animate-fade-in relative text-[15px]">
+                <div class="w-24 h-24 bg-[#2563EB] rounded-full flex items-center justify-center mb-10 shadow-[0_10px_20px_rgba(37,99,235,0.3)] transition-all"><i data-lucide="fingerprint" class="text-white w-12 h-12"></i></div>
+                <div class="w-full mb-2 px-2 text-[15px]">
                   <h1 class="text-[58px] font-black italic tracking-tighter text-[#1E293B] leading-[1.1] mb-12">Trend Insight Lab.</h1>
                 </div>
                 <p class="text-[#94A3B8] font-bold mb-12 text-[15px]">AI 기반 트렌드 분석 인사이트 도구</p>
                 <div class="w-full space-y-4 text-[15px]">
-                  <div class="py-2">
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-[#2563EB] font-bold text-[15px] underline underline-offset-4">개인 API Key 발급받기</a>
-                  </div>
-                  <input type="password" id="api-input" class="w-full p-5 bg-white border-2 border-slate-300 rounded-2xl text-center focus:ring-2 focus:ring-blue-500 outline-none text-lg placeholder:text-slate-300 font-medium text-[15px]" placeholder="API KEY 입력">
+                  <div class="py-2"><a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-[#2563EB] font-bold text-[15px] underline underline-offset-4">개인 API Key 발급받기</a></div>
+                  <input type="password" id="api-input" class="w-full p-5 bg-white border-2 border-slate-300 rounded-2xl text-center focus:ring-2 focus:ring-blue-500 outline-none text-lg placeholder:text-white/30 font-medium text-[15px]" placeholder="API KEY 입력">
                   <p class="text-xs text-gray-500">분석을 위해 유효한 Gemini API 키를 직접 입력해 주세요. (로컬 브라우저에만 임시 유지됩니다)</p>
-                  <button onclick="Actions.validateKey()" class="w-full py-5 bg-[#1E3A8A] text-white rounded-2xl font-black active:scale-95 transition-all text-[16px] shadow-lg">
-                    API Key 입력 후 시작
-                  </button>
+                  <button onclick="Actions.validateKey()" class="w-full py-5 bg-[#1E3A8A] text-white rounded-2xl font-black active:scale-95 transition-all text-[16px] shadow-lg">API Key 입력 후 시작</button>
                 </div>
               </div>`;
             break;
-
           case 0:
-            content += `
-              <div class="flex flex-col min-h-screen bg-slate-900 text-white relative overflow-hidden text-[15px]">
+            content += `<div class="flex flex-col min-h-screen bg-slate-900 text-white relative overflow-hidden text-[15px]">
                 <div class="absolute top-[-20%] left-[-20%] w-[140%] h-[60%] bg-blue-600 rounded-full blur-[100px] opacity-40"></div>
                 <div class="relative z-10 flex flex-col flex-1 p-8 pt-20 justify-center gap-6 text-[15px]">
                   <div class="space-y-6">
@@ -533,18 +545,13 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                     <h1 class="text-[40px] font-black leading-tight tracking-tighter italic text-white">트렌드를 통해<br/>당신의 인사이트를<br/><span class="text-sky-400 font-black">발견하세요!</span></h1>
                     <p class="text-slate-300 text-lg leading-relaxed font-medium text-[15px]">데이터 기반 트렌드 분석부터 미래 시나리오와 디자인 컨셉까지.</p>
                   </div>
-                  <div class="mt-8 space-y-4">
-                    <button onclick="Actions.loadFromLocal()" class="w-full bg-slate-800/50 border border-white/20 text-white py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-2 shadow-2xl active:scale-95 transition-all text-[15px]">
-                      기존 프로젝트 열기 <i data-lucide="folder-open"></i>
-                    </button>
-                    <button onclick="Actions.startNewProject()" class="w-full bg-white text-slate-900 py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-2 shadow-2xl active:scale-95 transition-all text-[15px]">
-                      새 프로젝트 시작 <i data-lucide="arrow-right"></i>
-                    </button>
+                  <div class="mt-8 space-y-4 text-[15px]">
+                    <button onclick="Actions.loadFromLocal()" class="w-full bg-slate-800/50 border border-white/20 text-white py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-2 shadow-2xl active:scale-95 transition-all text-[15px]">기존 프로젝트 열기 <i data-lucide="folder-open"></i></button>
+                    <button onclick="Actions.startNewProject()" class="w-full bg-white text-slate-900 py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-2 shadow-2xl active:scale-95 transition-all text-[15px]">새 프로젝트 시작 <i data-lucide="arrow-right"></i></button>
                   </div>
                 </div>
               </div>`;
             break;
-
           case 1:
             let list1 = TREND_DATA[state.selectedYear].map(item => {
               const isSelected = state.step1Keywords.some(k => k.code === item.code);
@@ -562,7 +569,6 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                   <button onclick="Actions.runDeepDive()" ${state.step1Keywords.length === 0 ? 'disabled' : ''} class="w-full py-6 rounded-xl font-bold text-white bg-slate-900 disabled:bg-slate-200 shadow-xl active:scale-95 transition-all text-[15px]">분석 시작 (${state.step1Keywords.length}/2)</button>
                 </div></div>`;
             break;
-
           case 2:
             const deepDiveBlocks = state.step1Keywords.map(kw => {
               const res = state.deepDiveResult?.[kw.code] || state.deepDiveResult?.[kw.code.toLowerCase()] || state.deepDiveResult?.[kw.kr];
@@ -574,21 +580,18 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("육하원칙 심층 분석", 1)}${deepDiveBlocks}${renderAIQuestionBox('deepDiveResult', 'qa-input-2')}
                 <div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto space-y-3 shadow-2xl z-[60] text-[15px]"><button onclick="setState({multiSelected: state.step1Keywords}); Actions.runSteep();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold active:scale-95 transition-all shadow-xl text-[15px]">과거-현재-미래 분석</button></div></div>`;
             break;
-
           case 4:
             const steepList = Array.isArray(state.steepResult) ? state.steepResult : [];
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("과거-현재-미래 분석", 2)}<div class="space-y-8 text-[15px]">${steepList.map(item => `<div class="bg-white rounded-[2rem] p-7 shadow-sm border border-slate-100 text-[15px]"><h3 class="text-2xl font-black mb-8 text-slate-900 flex items-center gap-2 text-[15px]"><div class="w-2 h-8 bg-dark-blue rounded-full"></div>${item.keyword}</h3>
-                ${['past', 'present', 'future'].map(t => `<div class="mb-10 last:mb-0 text-[15px]"><div class="text-[16px] font-black uppercase text-blue-600 mb-4 tracking-[0.2em] flex items-center gap-2 text-[15px]">${t}</div><p class="text-[16px] leading-[1.8] text-slate-800 text-justify font-medium mb-6 opacity-95 text-[15px]">${item.timeline[t].desc}</p>
+                ${['past', 'present', 'future'].map(t => `<div class="mb-10 last:mb-0 text-[15px] text-[15px]"><div class="text-[16px] font-black uppercase text-blue-600 mb-4 tracking-[0.2em] flex items-center gap-2 text-[15px] text-[15px]">${t}</div><p class="text-[16px] leading-[1.8] text-slate-800 text-justify font-medium mb-6 opacity-95 text-[15px]">${item.timeline[t].desc}</p>
                 <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3 text-[15px]">${Object.entries(item.timeline[t].steep).map(([k,v]) => `<div class="mb-3 last:mb-0 text-[15px]"><span class="font-black text-slate-900 uppercase text-[15px]">${STEEP_MAP[k.toLowerCase()] || k.toUpperCase()} : </span><span class="text-slate-700 font-medium leading-relaxed text-[15px]">${v}</span></div>`).join('')}</div></div>`).join('')}</div>`).join('')}</div>
               ${renderAIQuestionBox('steepResult', 'qa-input-4')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 5})" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold text-[15px] shadow-xl active:scale-95 transition-all text-[15px]">미래 트렌드 예측하기</button></div></div>`;
             break;
-
           case 5:
             content += `<div class="pt-20 px-6 min-h-screen flex flex-col justify-center text-center animate-fade-in text-[15px]">${renderHeader("미래 트렌드 예측하기", 4)}<h2 class="text-3xl font-black mb-2 tracking-tight text-slate-900 text-[15px]">미래 예측 연도 설정</h2><div class="text-6xl font-black text-purple-600 mb-10 tracking-tighter animate-pulse text-[15px]" id="year-display">${state.targetYear}</div>
-                <input type="range" min="2026" max="2035" value="${state.targetYear}" oninput="document.getElementById('year-display').innerText = this.value; state.targetYear = parseInt(this.value);" onchange="setState({ targetYear: parseInt(this.value) });" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-600 mb-20 text-[15px]">
+                <input type="range" min="2026" max="2035" value="${state.targetYear}" oninput="document.getElementById('year-display').innerText = this.value; state.targetYear = parseInt(this.value);" onchange="setState({ targetYear: parseInt(this.value) });" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-600 mb-20">
                 <div class="fixed bottom-0 left-0 right-0 p-5 bg-white border-t max-w-[430px] mx-auto shadow-2xl z-[60] text-[15px]"><button onclick="Actions.runScenario()" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px]">미래 예측하기</button></div></div>`;
             break;
-
           case 6:
             const scenarios = state.futureScenario.trends || [state.futureScenario];
             const scenarioCards = scenarios.map((sc, i) => `<div class="mb-12 last:mb-0 animate-fade-in text-[15px]"><div class="bg-slate-900 rounded-[2.5rem] p-8 text-white mb-8 shadow-2xl text-center text-[15px]"><span class="text-blue-500 text-[10px] font-black uppercase tracking-[0.3em] mb-3 block text-[15px]">Predicted Future Trend #${i+1}</span><h2 class="text-3xl font-black mb-2 tracking-tight italic text-[15px]">${sc.futureTrendKeyword}</h2></div>
@@ -599,23 +602,20 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                     <input type="text" id="scenario-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 더 경제적인 관점으로 수정해줘"></div>
                 ${renderAIQuestionBox('futureScenario', 'qa-input-6')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 7})" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px]">통합 추론 진행</button></div></div>`;
             break;
-
           case 7: 
-            content += `<div class="pt-20 px-6 min-h-screen flex flex-col justify-center animate-fade-in text-[15px]">${renderHeader("추론 진행 목적", 6)}<div class="mb-12 text-[15px]"><i data-lucide="lightbulb" class="w-14 h-14 mx-auto text-yellow-500 mb-6 animate-bounce text-[15px]"></i>
+            content += `<div class="pt-20 px-6 min-h-screen flex flex-col justify-center animate-fade-in text-[15px] text-[15px] text-[15px]">${renderHeader("추론 진행 목적", 6)}<div class="mb-12 text-[15px]"><i data-lucide="lightbulb" class="w-14 h-14 mx-auto text-yellow-500 mb-6 animate-bounce text-[15px]"></i>
                 <h2 class="text-2xl font-black text-slate-900 tracking-tight leading-tight text-left italic text-[15px]">선택한 트렌드와 미래 예측 트렌드를 바탕으로 추론하고 컨셉 도출할 과제를 입력해 주세요</h2><p class="text-slate-400 text-[15px] mt-4 font-medium text-left text-[15px]">사례 : 2030년 TV UX 신규 컨셉</p></div>
                 <textarea id="research-topic-input" oninput="state.researchTopic = this.value;" onchange="setState({ researchTopic: this.value })" class="w-full h-36 p-5 rounded-2xl border border-slate-200 mb-6 text-lg focus:border-indigo-500 outline-none font-medium leading-relaxed text-[15px] text-[15px]" placeholder="여기에 입력하세요...">${state.researchTopic}</textarea>
                 <div class="fixed bottom-0 left-0 right-0 p-5 bg-white border-t max-w-[430px] mx-auto shadow-2xl z-[60] text-[15px]"><button onclick="Actions.runReasoning();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px]">통합 추론 진행</button></div></div>`;
             break;
-
           case 8: 
             const reRes = state.reasoningResult;
-            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px]">${renderHeader("통합 추론 진행", 7)}<div class="mb-8 text-center text-[15px]"><h2 class="text-2xl font-black text-slate-900 tracking-tight text-[15px]">통합 추론 리포트</h2></div>
-                <div class="space-y-6 mb-10 text-[15px]">${reRes.insights.map((ins, i) => `<div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-blue-900 font-black text-[17px] leading-[1.8] mb-1 tracking-tight text-[15px]">${ins.headline}</h3><p class="text-slate-600 text-[15px] leading-[1.8] text-justify font-medium whitespace-pre-line text-[15px]">${ins.description}</p></div>`).join('')}</div>
+            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px] text-[15px] text-[15px]">${renderHeader("통합 추론 진행", 7)}<div class="mb-8 text-center text-[15px]"><h2 class="text-2xl font-black text-slate-900 tracking-tight text-[15px]">통합 추론 리포트</h2></div>
+                <div class="space-y-6 mb-10 text-[15px] text-[15px]">${reRes.insights.map((ins, i) => `<div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-blue-900 font-black text-[17px] leading-[1.8] mb-1 tracking-tight text-[15px]">${ins.headline}</h3><p class="text-slate-600 text-[15px] leading-[1.8] text-justify font-medium whitespace-pre-line text-[15px]">${ins.description}</p></div>`).join('')}</div>
                 <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]"><div class="flex items-center gap-2 text-white text-[15px]"><i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i><span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span><button onclick="Actions.runReasoning(document.getElementById('reasoning-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button></div>
                   <input type="text" id="reasoning-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 더 경제적인 관점으로 수정해줘"></div>
                 ${renderAIQuestionBox('reasoningResult', 'qa-input-8')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 9, designGoal: state.researchTopic}); Actions.runIdeation();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold active:scale-95 transition-all text-[15px]">디자인 컨셉 가설 제안</button></div></div>`;
             break;
-
           case 9:
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px]">${renderHeader("디자인 컨셉 가설 제안", 8)}<div class="space-y-12">
                 ${state.concepts.map((c, i) => { const formattedCoreValue = c.coreValue.replace(/(Who:|Purpose:|Service:)/g, '<span class="text-blue-600 font-black">$1</span>');
@@ -630,7 +630,6 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
               <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]"><div class="flex items-center gap-2 text-white text-[15px]"><i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i><span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span><button onclick="Actions.startNewProject()" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button></div>
                 <input type="text" id="ideation-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 타겟을 더 좁혀서 다시 제안해줘"></div></div>`;
             break;
-
           case 10:
             const bRes = state.benchmarkResult;
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px] text-[15px] text-[15px]">${renderHeader("컨셉 가설 연관 케이스스터디", 9)}<div class="mb-8 text-center text-[15px]"><span class="text-blue-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 block text-[15px]">Selected Concept</span><h2 class="text-2xl font-black text-slate-900 break-keep leading-tight italic text-[15px]">${bRes.selectedConceptName}</h2></div>
@@ -670,7 +669,6 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
 
       window.onload = async () => {
         render();
-        // 5초 간격 자동 저장 설정
         setInterval(() => {
           if (state.step >= 0) {
             const { apiKey, isAnalyzing, loadingMsg, errorMsg, ...dataToSave } = state;
