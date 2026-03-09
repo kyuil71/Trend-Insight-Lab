@@ -79,7 +79,7 @@
         "2026": [
           { code: "T26-01", kr: "휴먼인더루프", en: "Human-in-the-loop", summary: "AI 자동화 시스템이 고도화될수록 오히려 인간의 개입과 판단이 중요해지는 현상입니다. AI가 처리하지 못하는 예외 상황이나 윤리적 판단, 창의적 결정 단계에서 인간이 필수적인 역할을 수행하며, '인간과 AI의 협업'이 완벽한 결과를 위한 필수 조건임을 의미합니다." },
           { code: "T26-02", kr: "필코노미", en: "The Feelconomy", summary: "제품의 기능이나 가성비보다 소비 과정에서 느끼는 감정과 기분(Feel)이 소비 결정의 핵심 기준이 되는 경제 현상입니다. 단순히 좋은 물건을 사는 것을 넘어, 그 과정에서 얻는 즐거움, 위로, 특별한 기분 등 정서적 만족감이 가격 이상의 가치를 창출하는 감각 중심의 경제입니다." },
-          { code: "T26-03", kr: "제로클릭", en: "Zero-click", summary: "사용자가 별도로 검색하거나 앱을 실행하는 수고(Click)를 하지 않아도, AI가 맥락을 파악하여 알아서 필요한 정보를 제공하거나 기능을 수행하는 환경입니다. 사용자의 의도를 미리 예측하여 선제적으로 서비스를 제공하는 '초개인화' 기술의 정점을 보여주는 미래형 인터페이스입니다." },
+          { code: "T26-03", kr: "제로클릭", en: "Zero-click", summary: "사용자가 별도로 검색하거나 앱을 실행하는 수고(Click)를 하지 알아도, AI가 맥락을 파악하여 알아서 필요한 정보를 제공하거나 기능을 수행하는 환경입니다. 사용자의 의도를 미리 예측하여 선제적으로 서비스를 제공하는 '초개인화' 기술의 정점을 보여주는 미래형 인터페이스입니다." },
           { code: "T26-04", kr: "레디코어", en: "Ready-core", summary: "기후 재난, 팬데믹, 전쟁 등 예측 불가능한 위기가 일상화됨에 따라, 생존을 위한 대비(Ready)를 삶의 중심(Core)에 두는 라이프스타일입니다. 비상 식량이나 생존 키트를 구비하는 것을 넘어, 위기 상황에서도 일상을 유지할 수 있는 회복 탄력성과 생존 기술을 습득하는 것이 필수가 되었습니다." },
           { code: "T26-05", kr: "AX조직", en: "AX Organization", summary: "AI 전환(AI Transformation)이 단순한 도구 도입을 넘어, 조직의 일하는 방식, 의사결정 체계, 인재상까지 근본적으로 바뀐 미래형 조직입니다. 모든 구성원이 AI를 능숙하게 활용하여 업무 효율을 극대화하고, 데이터 기반의 의사결정이 조직 문화의 핵심으로 자리 잡은 기업 형태입니다." },
           { code: "T26-06", kr: "픽셀라이프", en: "Pixelated Life", summary: "건강, 수면, 자산, 시간, 감정 등 삶의 모든 영역을 디지털 데이터(픽셀) 단위로 정교하게 측정하고 기록하여 관리하는 삶의 방식입니다. 웨어러블 기기와 센서 기술의 발달로 자신의 상태를 실시간으로 모니터링하고, 데이터에 기반하여 삶의 질을 최적화하려는 '정량화된 자아' 트렌드입니다." },
@@ -142,10 +142,13 @@ Return a JSON object: { "insights": [ { "headline": "...", "description": "..." 
 
         "CONCEPTS": `You are a Creative Director. Generate 3 design concepts.
 Return RAW JSON array of 3 objects.
-Structure: [{ "title": "Concept Name", "persona": "Strategic Persona Description", "coreValue": "String", "keyFeatures": [{ "title": "Feature Title", "desc": "Detailed description" }] }].
+Structure: [{ "title": "Concept Name", "persona": "Strategic Persona Description", "description": "Overall summary of the concept (approx. 3 lines)", "coreValue": "String", "keyFeatures": [{ "title": "Feature Title", "desc": "Detailed description" }] }].
 
 [PERSONA GUIDELINE]
 Define a unique and strategically relevant target persona that best fits the analyzed context.
+
+[DESCRIPTION RULE]
+'description' 필드에 해당 컨셉에 대한 전반적인 내용을 요약 정리하여 약 3줄 정도 분량으로 작성하세요. 이 내용은 Core Value 이전에 제시됩니다.
 
 [CRITICAL INSTRUCTION FOR coreValue] 
 You MUST provide the coreValue as a structured text with the sub-headers: "Who", "Purpose", and "Service".
@@ -164,6 +167,7 @@ Service: [AI-based solution/proposal]"
 - caseName: Must be in the format "English Name (Korean Name)". E.g., "Virta Health (비르타 헬스)"
 - caseCharacteristics: Must be a detailed narrative summary (approx. 5 sentences). 
 [CONTENT RULE]: Explicitly describe When (founding year), Who (founder), How (core technology or business method), and What (main business/goal). Ensure a clear and comprehensive overview.
+[VOLUME RULE]: 'successFactor', 'businessResult', 'expansionFactor'의 내용은 각각 3줄 정도의 양으로 상세히 제시하세요.
 [MODIFICATION RULE]: If a specific [INSTRUCTION] is provided, use your global business analyst skills to adjust the case selection or the depth of analysis as requested. Revise the previous results professionally to match the user's feedback.
 
 Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "caseCharacteristics": "...", "successFactor": "...", "businessResult": "...", "expansionFactor": "..." } ] }
@@ -632,7 +636,9 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                 ${state.concepts.map((c, i) => { const formattedCoreValue = c.coreValue.replace(/(Who:|Purpose:|Service:)/g, '<span class="text-blue-600 font-black">$1</span>');
                   return `<div class="animate-fade-in text-[15px] text-[15px]"><div class="mb-4 text-left px-2 text-[15px]"><p class="text-[15px] text-indigo-600 font-black leading-relaxed whitespace-pre-line text-[15px] text-[15px]">${c.persona}</p></div>
                   <div class="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 text-[15px]"><h3 class="text-2xl font-black mb-8 tracking-tight text-slate-900 text-left text-[15px]">${i+1}. ${c.title}</h3>
-                    <div class="space-y-8 text-[15px]"><div class="text-[15px]"><h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-3 text-[15px]">CORE VALUE</h4><div class="font-bold text-[17px] text-slate-800 break-keep leading-[1.8] whitespace-pre-line text-[15px] text-[15px]">${formattedCoreValue}</div></div>
+                    <div class="space-y-8 text-[15px]">
+                      ${c.description ? `<div class="text-[15px]"><h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-3 text-[15px]">CONCEPT DESCRIPTION</h4><p class="text-[16px] text-slate-700 leading-relaxed font-medium text-justify whitespace-pre-line mb-4">${c.description}</p></div>` : ''}
+                      <div class="text-[15px]"><h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-3 text-[15px]">CORE VALUE</h4><div class="font-bold text-[17px] text-slate-800 break-keep leading-[1.8] whitespace-pre-line text-[15px] text-[15px]">${formattedCoreValue}</div></div>
                       <div class="text-[15px]"><h4 class="text-[15px] font-black text-slate-400 uppercase tracking-widest mb-4 text-[15px]">KEY FEATURES</h4><ul class="space-y-6 text-[15px]">${c.keyFeatures.map(f => `<li class="space-y-1 text-[15px]"><div class="text-[17px] text-slate-900 font-black text-[15px]">${typeof f === 'string' ? f : f.title}</div>
                               ${typeof f !== 'string' && f.desc ? `<p class="text-[15px] text-slate-600 leading-relaxed font-medium text-[15px]">${f.desc}</p>` : ''}</li>`).join('')}</ul></div></div>
                     <button onclick="Actions.runBenchmark(${i})" class="w-full mt-10 py-4 bg-slate-800 text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-3 transition-all active:scale-95 shadow-md text-[15px]"><div class="w-6 h-6 bg-white rounded-full flex items-center justify-center text-[15px]"><i data-lucide="play" class="w-3 h-3 fill-slate-800 text-slate-800 ml-0.5 text-[15px]"></i></div>케이스스터디 분석</button></div></div>`}).join('')}
