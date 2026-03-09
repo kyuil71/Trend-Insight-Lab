@@ -38,7 +38,7 @@
          1. CONFIGURATION & DATA (Personal API Only)
          ========================================================= */
       const CONFIG = {
-        MODEL_NAME: "gemini-2.5-flash", 
+        MODEL_NAME: "gemini-flash-latest", 
         SESSION_KEY_API: "trendInsightApiKey_v18",
         LOCAL_STORAGE_KEY: "trend_lab_saved_state_v15"
       };
@@ -664,14 +664,14 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
          ========================================================= */
       window.toggleExpand = (code) => { const newExp = { ...state.expanded }; newExp[code] = !newExp[code]; setState({ expanded: newExp }); };
       window.toggleStep1Keyword = (code) => {
-        const item = Object.values(TREND_DATA).flat().find(i => i.code === code);
+        const item = TREND_DATA[state.selectedYear].find(i => i.code === code);
         let newList = [...state.step1Keywords];
         if (newList.some(i => i.code === code)) newList = newList.filter(i => i.code !== code);
         else if (newList.length < 2) { newList.push(item); setState({ expanded: { ...state.expanded, [code]: true } }); }
         setState({ step1Keywords: newList });
       };
       window.toggleMulti = (code) => {
-        const item = Object.values(TREND_DATA).flat().find(i => i.code === code);
+        const item = TREND_DATA[state.selectedYear].find(i => i.code === code);
         let newList = [...state.multiSelected];
         if (newList.some(i => i.code === code)) newList = newList.filter(i => i.code !== code);
         else if (newList.length < 2) { newList.push(item); setState({ expanded: { ...state.expanded, [code]: true } }); }
