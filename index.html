@@ -618,13 +618,36 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             const scenarios = state.futureScenario.trends || [state.futureScenario];
             const scenarioCards = scenarios.map((scItem, i) => {
               const isSelected = state.selectedScenarioIndex === i;
-              return `<div class="mb-12 last:mb-0 animate-fade-in text-[15px]"><div class="bg-slate-900 rounded-[2.5rem] p-8 text-white mb-8 shadow-2xl relative border-2 ${isSelected ? 'border-blue-500 bg-slate-800' : 'border-transparent'} text-[15px]">
-                    <div class="flex justify-between items-start gap-3"><div class="text-left flex-1"><span class="text-blue-500 text-[10px] font-black uppercase tracking-[0.3em] mb-2 block text-[15px]">Predicted Future Trend #${i+1}</span><h2 class="text-3xl font-black mb-2 tracking-tight italic text-[15px] leading-tight">${scItem.futureTrendKeyword}</h2></div>
-                    <button onclick="setState({selectedScenarioIndex: ${i}})" class="px-4 py-2 rounded-full text-[14px] font-bold flex-shrink-0 transition-all active:scale-90 ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-white/10 text-white/50 border border-white/20 hover:bg-white/20'}">${isSelected ? '선택됨' : '선택'}</button></div></div>
-                    <div class="space-y-8 text-[15px]"><div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">미래 트렌드 특성</h3><p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px] text-[15px]">${scItem.characteristics}</p></div>
-                        <div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-indigo-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">사용자 행동 시나리오</h3><p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line italic text-[15px] text-[15px] text-[15px]">${scItem.userScenario}</p></div></div></div>`
+              return `<div class="mb-12 last:mb-0 animate-fade-in text-[15px]">
+                  <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white mb-6 shadow-2xl border-2 transition-all ${isSelected ? 'border-blue-500' : 'border-transparent'}">
+                    <div class="space-y-4">
+                      <div class="flex items-center justify-between gap-4">
+                        <span class="text-blue-500 text-[11px] font-black uppercase tracking-[0.2em] block">PREDICTED FUTURE TREND #${i+1}</span>
+                        <button onclick="setState({selectedScenarioIndex: ${i}})" 
+                          class="px-5 py-2 rounded-full text-[14px] font-black transition-all active:scale-90 shadow-lg flex-shrink-0 ${isSelected ? 'bg-blue-600 text-white ring-4 ring-blue-500/20' : 'bg-white/10 text-white/60 border border-white/20 hover:bg-white/20'}">
+                          ${isSelected ? '선택됨' : '선택'}
+                        </button>
+                      </div>
+                      <h2 class="text-3xl font-black tracking-tight italic leading-tight">${scItem.futureTrendKeyword}</h2>
+                    </div>
+                  </div>
+                  <div class="px-2 space-y-8">
+                    <div class="text-slate-900">
+                      <h3 class="text-blue-600 font-black text-[15px] uppercase mb-3 flex items-center gap-2 tracking-widest">
+                        <div class="w-1.5 h-1.5 rounded-full bg-blue-600"></div> 미래 트렌드 특성
+                      </h3>
+                      <p class="text-[17px] leading-[1.8] text-justify font-normal text-slate-700 whitespace-pre-line">${scItem.characteristics}</p>
+                    </div>
+                    <div class="text-slate-900">
+                      <h3 class="text-indigo-600 font-black text-[15px] uppercase mb-3 flex items-center gap-2 tracking-widest">
+                        <div class="w-1.5 h-1.5 rounded-full bg-indigo-600"></div> 사용자 행동 시나리오
+                      </h3>
+                      <p class="text-[17px] leading-[1.8] text-justify font-normal italic text-slate-700 whitespace-pre-line">${scItem.userScenario}</p>
+                    </div>
+                  </div>
+                </div>`
             }).join('');
-            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("미래 트렌드 예측하기", 4)}${scenarioCards}<div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]">
+            content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("미래 트렌드 예측하기", 4)}${scenarioCards}<div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 mt-12 text-[15px]">
                     <div class="flex items-center gap-2 text-white text-[15px]"><i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i><span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span><button onclick="Actions.runScenario(document.getElementById('scenario-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button></div>
                     <input type="text" id="scenario-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 더 경제적인 관점으로 수정해줘"></div>
                 ${renderAIQuestionBox('futureScenario', 'qa-input-6')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 7})" ${state.selectedScenarioIndex === -1 ? 'disabled' : ''} class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px] disabled:bg-slate-300">통합 추론 진행</button></div></div>`;
@@ -641,9 +664,16 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
                 <div class="space-y-6 mb-10 text-[15px] text-[15px] text-[15px]">${reRes.insights.map((ins, i) => {
                   const isSelected = state.selectedInsightIndex === i;
                   return `<div class="bg-white p-7 rounded-[2rem] shadow-sm border-2 transition-all ${isSelected ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-slate-100'} text-[15px]">
-                  <div class="flex items-start justify-between gap-3 mb-3"><h3 class="text-blue-900 font-black text-[17px] leading-[1.6] mb-1 tracking-tight text-[15px] flex-1">${ins.headline}</h3>
-                  <button onclick="setState({selectedInsightIndex: ${i}})" class="px-4 py-2 rounded-full text-[14px] font-bold flex-shrink-0 transition-all active:scale-90 ${isSelected ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${isSelected ? '선택됨' : '선택'}</button></div>
-                  <p class="text-slate-600 text-[15px] leading-[1.8] text-justify font-medium whitespace-pre-line text-[15px]">${ins.description}</p></div>`
+                  <div class="flex items-center justify-between gap-3 mb-4">
+                    <span class="text-blue-500 text-[12px] font-bold uppercase tracking-widest">Insight synthesis ${i+1}</span>
+                    <button onclick="setState({selectedInsightIndex: ${i}})" 
+                      class="px-4 py-1.5 rounded-full text-[13px] font-bold flex-shrink-0 transition-all active:scale-90 ${isSelected ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'}">
+                      ${isSelected ? '선택됨' : '선택'}
+                    </button>
+                  </div>
+                  <h3 class="text-blue-900 font-bold text-[18px] leading-[1.5] mb-4 tracking-tight">${ins.headline}</h3>
+                  <p class="text-slate-700 text-[17px] leading-[1.8] text-justify font-normal text-slate-600 whitespace-pre-line">${ins.description}</p>
+                </div>`
                 }).join('')}</div>
                 <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]"><div class="flex items-center gap-2 text-white text-[15px]"><i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i><span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span><button onclick="Actions.runReasoning(document.getElementById('reasoning-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button></div>
                   <input type="text" id="reasoning-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 더 경제적인 관점으로 수정해줘"></div>
