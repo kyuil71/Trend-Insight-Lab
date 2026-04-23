@@ -193,7 +193,9 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         steepResult: null,
         targetYear: 2030,
         futureScenario: null,
+        selectedScenarioIndex: -1,
         reasoningResult: null,
+        selectedInsightIndex: -1,
         designGoal: "",
         researchTopic: "", 
         perspective: "General", 
@@ -293,7 +295,6 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
               const currentApiKey = state.apiKey;
               setState({ ...data, apiKey: currentApiKey, isAnalyzing: false });
               
-              // 불러오기 성공 토스트 표시 (클립보드 메시지와 구분)
               const toast = document.createElement("div");
               toast.innerText = "이전 프로젝트를 성공적으로 불러왔습니다.";
               toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-full text-[15px] font-bold z-[10000] animate-fade-in shadow-xl";
@@ -302,7 +303,6 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
               return true;
             } catch (e) { console.error("Local load failed", e); }
           }
-          // 데이터가 없는 경우 경고 알림 표시
           const toast = document.createElement("div");
           toast.innerText = "저장된 프로젝트 데이터가 없습니다.";
           toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full text-[15px] font-bold z-[10000] animate-fade-in shadow-xl";
@@ -315,8 +315,8 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
           const currentApiKey = state.apiKey;
           const initialState = {
             step: 1, maxStepReached: -1, selectedYear: "2024", step1Keywords: [], multiSelected: [],
-            deepDiveResult: null, steepResult: null, targetYear: 2030, futureScenario: null,
-            reasoningResult: null, designGoal: "", researchTopic: "", perspective: "General",
+            deepDiveResult: null, steepResult: null, targetYear: 2030, futureScenario: null, selectedScenarioIndex: -1,
+            reasoningResult: null, selectedInsightIndex: -1, designGoal: "", researchTopic: "", perspective: "General",
             concepts: [], allGeneratedConcepts: [], benchmarkResult: null, selectedConceptIndex: -1,
             expanded: {}, qaModal: { visible: false, question: "", answer: "" }, qaHistory: []
           };
@@ -358,23 +358,25 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
           let prompt = `Trends:\n${kws}\nYear: ${state.targetYear}`;
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
           const res = await callGemini(PROMPTS["SCENARIO"], prompt);
-          if (res) setState({ futureScenario: res, step: 6 });
+          if (res) setState({ futureScenario: res, step: 6, selectedScenarioIndex: -1 });
         },
 
         async runReasoning(instruction = null) {
           setState({ loadingMsg: instruction ? "추론 내용 수정 중..." : "트렌드 통합 추론 중..." });
           const initial = state.step1Keywords.map(k => k.kr).join(", ");
-          const trends = state.futureScenario.trends || [state.futureScenario];
-          const future = trends.map(t => t.futureTrendKeyword).join(", ");
-          let prompt = `Goal: ${state.researchTopic}, Initial: ${initial}, Future: ${future}`;
+          const allScenarios = state.futureScenario.trends || [state.futureScenario];
+          const selectedScenario = state.selectedScenarioIndex !== -1 ? allScenarios[state.selectedScenarioIndex] : null;
+          const future = selectedScenario ? selectedScenario.futureTrendKeyword : allScenarios.map(t => t.futureTrendKeyword).join(", ");
+          let prompt = `Goal: ${state.researchTopic}, Initial: ${initial}, Future: ${future}. [Context]: Analysis based on the specifically chosen future trend: ${JSON.stringify(selectedScenario)}`;
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
           const res = await callGemini(PROMPTS["REASONING"], prompt);
-          if (res) setState({ reasoningResult: res, step: 8 });
+          if (res) setState({ reasoningResult: res, step: 8, selectedInsightIndex: -1 });
         },
 
         async runIdeation(instruction = null) {
-          setState({ loadingMsg: instruction ? "컨셉 수정 중..." : "컨셉 도출 중..." });
-          let prompt = `Task: ${state.researchTopic}, Perspective: ${state.perspective}, Insights: ${JSON.stringify(state.reasoningResult)}`;
+          setState({ loadingMsg: instruction ? "컨셉 수정 중..." : "컨셉 도출 중...", designGoal: state.researchTopic });
+          const selectedInsight = state.selectedInsightIndex !== -1 ? state.reasoningResult.insights[state.selectedInsightIndex] : state.reasoningResult;
+          let prompt = `Task: ${state.researchTopic}, Perspective: ${state.perspective}, Integrated Insight: ${JSON.stringify(selectedInsight)}`;
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
           const res = await callGemini(PROMPTS["CONCEPTS"], prompt);
           if (res) {
@@ -406,9 +408,9 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         else if (state.step === 2 && state.steepResult) nextStep = 4;
         else if (state.step === 4) nextStep = 5;
         else if (state.step === 5 && state.futureScenario) nextStep = 6;
-        else if (state.step === 6) nextStep = 7;
+        else if (state.step === 6 && state.selectedScenarioIndex !== -1) nextStep = 7;
         else if (state.step === 7 && state.reasoningResult) nextStep = 8;
-        else if (state.step === 8 && state.concepts.length > 0) nextStep = 9;
+        else if (state.step === 8 && state.selectedInsightIndex !== -1) nextStep = 9;
         else if (state.step === 9 && state.benchmarkResult) nextStep = 10;
 
         return `
@@ -457,14 +459,19 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
         }
         if (state.futureScenario) {
           txt += `[4. 미래 예측 트렌드 (${state.targetYear}년)]\n`;
-          (state.futureScenario.trends || [state.futureScenario]).forEach((t, i) => {
-             txt += `● 미래 트렌드 #${i+1}: ${t.futureTrendKeyword}\n 특성 요약: ${t.characteristics}\n 시나리오: ${t.userScenario}\n\n`;
+          const scenarios = state.futureScenario.trends || [state.futureScenario];
+          scenarios.forEach((t, i) => {
+             const isSelected = state.selectedScenarioIndex === i;
+             txt += `● 미래 트렌드 #${i+1}${isSelected ? ' (선택됨)' : ''}: ${t.futureTrendKeyword}\n 특성 요약: ${t.characteristics}\n 시나리오: ${t.userScenario}\n\n`;
           });
         }
         if (state.researchTopic) txt += `[5. 추론 진행 목적]\n- 과제: ${state.researchTopic}\n\n`;
         if (state.reasoningResult) {
           txt += `[6. 통합 인사이트 추론 리포트]\n`;
-          state.reasoningResult.insights.forEach((ins, i) => { txt += `${i+1}. ${ins.headline}\n   : ${ins.description}\n`; });
+          state.reasoningResult.insights.forEach((ins, i) => { 
+            const isSelected = state.selectedInsightIndex === i;
+            txt += `${i+1}. ${ins.headline}${isSelected ? ' (선택됨)' : ''}\n   : ${ins.description}\n`; 
+          });
           txt += `\n`;
         }
         if (state.allGeneratedConcepts && state.allGeneratedConcepts.length > 0) {
@@ -590,7 +597,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
               if (!res) return "";
               return `<div class="mb-12 animate-fade-in text-[15px]"><div class="bg-slate-900 rounded-[2rem] p-7 text-white mb-6 shadow-2xl text-[15px]"><div class="flex items-center gap-2 mb-2 text-[15px]"><span class="bg-blue-600 text-[11px] px-2.5 py-1 rounded-full font-black tracking-widest uppercase text-[15px]">KEYWORD</span><h2 class="text-2xl font-black italic tracking-tight text-[15px]">${kw.kr}</h2></div>
                   <p class="text-[15px] text-slate-400 font-medium italic opacity-80 text-[15px]">${kw.en}</p><div class="bg-white/5 p-5 rounded-2xl border border-white/10 text-[15px]"><p class="text-[15px] text-slate-300 leading-relaxed text-justify font-light text-[15px]">${kw.summary}</p></div></div>
-                  <div class="grid gap-8 text-[15px]">${Object.entries(res).map(([k, v]) => `<div class="bg-white p-7 rounded-3xl shadow-sm border border-slate-100 text-[15px]"><h4 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]"><div class="w-1.5 h-1.5 rounded-full bg-blue-600 text-[15px]"></div> ${k}</h4><p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px] text-[15px]">${v}</p></div>`).join('')}</div></div>`;
+                  <div class="grid gap-8 text-[15px]">${Object.entries(res).map(([k, v]) => `<div class="bg-white p-7 rounded-3xl shadow-sm border border-slate-100 text-[15px]"><h4 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]"><div class="w-1.5 h-1.5 rounded-full bg-blue-600 text-[15px]"></div> ${k}</h4><p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px] text-[15px] text-[15px]">${v}</p></div>`).join('')}</div></div>`;
             }).join('');
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("육하원칙 심층 분석", 1)}${deepDiveBlocks}${renderAIQuestionBox('deepDiveResult', 'qa-input-2')}
                 <div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto space-y-3 shadow-2xl z-[60] text-[15px]"><button onclick="setState({multiSelected: state.step1Keywords}); Actions.runSteep();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold active:scale-95 transition-all shadow-xl text-[15px] text-[15px]">과거-현재-미래 분석</button></div></div>`;
@@ -609,13 +616,18 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
             break;
           case 6:
             const scenarios = state.futureScenario.trends || [state.futureScenario];
-            const scenarioCards = scenarios.map((scItem, i) => `<div class="mb-12 last:mb-0 animate-fade-in text-[15px]"><div class="bg-slate-900 rounded-[2.5rem] p-8 text-white mb-8 shadow-2xl text-center text-[15px]"><span class="text-blue-500 text-[10px] font-black uppercase tracking-[0.3em] mb-3 block text-[15px]">Predicted Future Trend #${i+1}</span><h2 class="text-3xl font-black mb-2 tracking-tight italic text-[15px]">${scItem.futureTrendKeyword}</h2></div>
+            const scenarioCards = scenarios.map((scItem, i) => {
+              const isSelected = state.selectedScenarioIndex === i;
+              return `<div class="mb-12 last:mb-0 animate-fade-in text-[15px]"><div class="bg-slate-900 rounded-[2.5rem] p-8 text-white mb-8 shadow-2xl relative border-2 ${isSelected ? 'border-blue-500 bg-slate-800' : 'border-transparent'} text-[15px]">
+                    <div class="flex justify-between items-start gap-3"><div class="text-left flex-1"><span class="text-blue-500 text-[10px] font-black uppercase tracking-[0.3em] mb-2 block text-[15px]">Predicted Future Trend #${i+1}</span><h2 class="text-3xl font-black mb-2 tracking-tight italic text-[15px] leading-tight">${scItem.futureTrendKeyword}</h2></div>
+                    <button onclick="setState({selectedScenarioIndex: ${i}})" class="px-4 py-2 rounded-full text-[14px] font-bold flex-shrink-0 transition-all active:scale-90 ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-white/10 text-white/50 border border-white/20 hover:bg-white/20'}">${isSelected ? '선택됨' : '선택'}</button></div></div>
                     <div class="space-y-8 text-[15px]"><div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-blue-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">미래 트렌드 특성</h3><p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line text-[15px] text-[15px]">${scItem.characteristics}</p></div>
-                        <div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-indigo-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">사용자 행동 시나리오</h3><p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line italic text-[15px] text-[15px] text-[15px]">${scItem.userScenario}</p></div></div></div>`).join('');
+                        <div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-indigo-600 font-black text-[16px] uppercase mb-4 flex items-center gap-2 tracking-widest text-[15px]">사용자 행동 시나리오</h3><p class="text-slate-800 text-[16px] leading-[1.8] text-justify font-medium opacity-95 whitespace-pre-line italic text-[15px] text-[15px] text-[15px]">${scItem.userScenario}</p></div></div></div>`
+            }).join('');
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px]">${renderHeader("미래 트렌드 예측하기", 4)}${scenarioCards}<div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]">
                     <div class="flex items-center gap-2 text-white text-[15px]"><i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i><span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span><button onclick="Actions.runScenario(document.getElementById('scenario-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button></div>
                     <input type="text" id="scenario-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 더 경제적인 관점으로 수정해줘"></div>
-                ${renderAIQuestionBox('futureScenario', 'qa-input-6')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 7})" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px]">통합 추론 진행</button></div></div>`;
+                ${renderAIQuestionBox('futureScenario', 'qa-input-6')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 7})" ${state.selectedScenarioIndex === -1 ? 'disabled' : ''} class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all text-[15px] disabled:bg-slate-300">통합 추론 진행</button></div></div>`;
             break;
           case 7: 
             content += `<div class="pt-20 px-6 min-h-screen flex flex-col justify-center animate-fade-in text-[15px] text-[15px] text-[15px]">${renderHeader("추론 진행 목적", 6)}<div class="mb-12 text-[15px]"><i data-lucide="lightbulb" class="w-14 h-14 mx-auto text-yellow-500 mb-6 animate-bounce text-[15px]"></i>
@@ -626,10 +638,16 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
           case 8: 
             const reRes = state.reasoningResult;
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px] text-[15px] text-[15px]">${renderHeader("통합 추론 진행", 7)}<div class="mb-8 text-center text-[15px]"><h2 class="text-2xl font-black text-slate-900 tracking-tight text-[15px]">통합 추론 리포트</h2></div>
-                <div class="space-y-6 mb-10 text-[15px] text-[15px] text-[15px]">${reRes.insights.map((ins, i) => `<div class="bg-white p-7 rounded-[2rem] shadow-sm border border-slate-100 text-[15px]"><h3 class="text-blue-900 font-black text-[17px] leading-[1.8] mb-1 tracking-tight text-[15px]">${ins.headline}</h3><p class="text-slate-600 text-[15px] leading-[1.8] text-justify font-medium whitespace-pre-line text-[15px]">${ins.description}</p></div>`).join('')}</div>
+                <div class="space-y-6 mb-10 text-[15px] text-[15px] text-[15px]">${reRes.insights.map((ins, i) => {
+                  const isSelected = state.selectedInsightIndex === i;
+                  return `<div class="bg-white p-7 rounded-[2rem] shadow-sm border-2 transition-all ${isSelected ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-slate-100'} text-[15px]">
+                  <div class="flex items-start justify-between gap-3 mb-3"><h3 class="text-blue-900 font-black text-[17px] leading-[1.6] mb-1 tracking-tight text-[15px] flex-1">${ins.headline}</h3>
+                  <button onclick="setState({selectedInsightIndex: ${i}})" class="px-4 py-2 rounded-full text-[14px] font-bold flex-shrink-0 transition-all active:scale-90 ${isSelected ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${isSelected ? '선택됨' : '선택'}</button></div>
+                  <p class="text-slate-600 text-[15px] leading-[1.8] text-justify font-medium whitespace-pre-line text-[15px]">${ins.description}</p></div>`
+                }).join('')}</div>
                 <div class="p-6 bg-slate-700 rounded-[2rem] shadow-xl space-y-4 text-[15px]"><div class="flex items-center gap-2 text-white text-[15px]"><i data-lucide="message-square" class="w-4 h-4 text-blue-400 text-[15px]"></i><span class="text-[15px] font-black uppercase tracking-widest text-blue-200 text-[15px]">AI 수정 지시</span><button onclick="Actions.runReasoning(document.getElementById('reasoning-instruction').value)" class="bg-blue-600 text-white p-2 rounded-lg ml-2 transition-all active:scale-90 text-[15px]"><i data-lucide="send" class="w-4 h-4 text-[15px]"></i></button></div>
                   <input type="text" id="reasoning-instruction" class="w-full bg-white/10 border-white/10 rounded-xl px-4 py-3 text-white text-[15px] outline-none placeholder:text-white/30 text-[15px]" placeholder="예: 더 경제적인 관점으로 수정해줘"></div>
-                ${renderAIQuestionBox('reasoningResult', 'qa-input-8')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="setState({step: 9, designGoal: state.researchTopic}); Actions.runIdeation();" class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold active:scale-95 transition-all text-[15px]">디자인 컨셉 가설 제안</button></div></div>`;
+                ${renderAIQuestionBox('reasoningResult', 'qa-input-8')}<div class="fixed bottom-0 left-0 right-0 p-5 bg-white/95 backdrop-blur-md border-t max-w-[430px] mx-auto flex gap-2 shadow-2xl z-[60] text-[15px]"><button onclick="Actions.runIdeation();" ${state.selectedInsightIndex === -1 ? 'disabled' : ''} class="w-full py-6 bg-slate-900 text-white rounded-xl font-bold active:scale-95 transition-all text-[15px] disabled:bg-slate-300">디자인 컨셉 가설 제안</button></div></div>`;
             break;
           case 9:
             content += `<div class="pt-20 px-4 pb-64 animate-fade-in text-[15px] text-[15px]">${renderHeader("디자인 컨셉 가설 제안", 8)}<div class="space-y-12">
@@ -686,9 +704,7 @@ Return JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "ca
 
       window.onload = async () => {
         render();
-        // 5초 간격 자동 저장 설정 점검
         setInterval(() => {
-          // 중요: Step 1 이상 실제 분석이 시작된 경우에만 저장을 수행하여 초기 상태로 덮어쓰는 것을 방지
           if (state.step > 0) {
             const { apiKey, isAnalyzing, loadingMsg, errorMsg, ...dataToSave } = state;
             localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
