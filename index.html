@@ -583,6 +583,8 @@ Return RAW JSON: { "answer": "..." }
           const data = { ...blankProject(), ...p.data, projectId: p.id };
           // 이전 버전에서 2024년으로 저장된 프로젝트도 열리도록 연도 보정 (선택한 키워드와 결과는 그대로 유지)
           data.selectedYear = validYear(data.selectedYear);
+          // 예측 연도는 2028~2035 범위로 보정 (이전 버전에서 2026·2027로 저장된 경우)
+          data.targetYear = Math.min(2035, Math.max(2028, parseInt(data.targetYear, 10) || 2030));
           setState({ ...data, isAnalyzing: false, errorMsg: null, step: lastCompletedStep(data) });
           toast("프로젝트를 열었습니다.", "ok");
         },
@@ -1082,11 +1084,11 @@ Integrated insight: ${JSON.stringify(insight)}`;
           <p class="t-small text-slate-500 mb-10 text-center">슬라이더를 움직여 목표 연도를 정하세요.</p>
           <output id="year-display" for="year-range" class="block t-display text-center text-indigo-600 mb-10" style="font-size:64px">${state.targetYear}</output>
           <label for="year-range" class="sr-only">목표 연도</label>
-          <input type="range" id="year-range" min="2026" max="2035" step="1" value="${state.targetYear}"
-            aria-valuemin="2026" aria-valuemax="2035" aria-valuenow="${state.targetYear}"
+          <input type="range" id="year-range" min="2028" max="2035" step="1" value="${state.targetYear}"
+            aria-valuemin="2028" aria-valuemax="2035" aria-valuenow="${state.targetYear}"
             oninput="document.getElementById('year-display').textContent=this.value; this.setAttribute('aria-valuenow', this.value); setDraft('targetYear', parseInt(this.value,10));"
             class="w-full appearance-none bg-transparent cursor-pointer">
-          <div class="flex justify-between t-meta text-slate-500 mt-2"><span>2026</span><span>2035</span></div>
+          <div class="flex justify-between t-meta text-slate-500 mt-2"><span>2028</span><span>2035</span></div>
           ${dock(primaryBtn("미래 예측하기", "Actions.runScenario()"))}
         </div>`;
       }
