@@ -38,6 +38,7 @@
 
     /* 본문 가독성: 한국어에서 양쪽정렬은 어절 사이가 벌어져 오히려 읽기 어려움 → 왼쪽 정렬 */
     body .prose-ko { text-align: left; white-space: pre-line; }
+    body .prose-center { text-align: center; white-space: pre-line; }
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -234,13 +235,18 @@ Return a RAW JSON array of 3 objects:
 [TONE] Korean. Clear and engaging. No markdown bold in values.`,
 
         "BENCHMARK": `You are a Global Business Analyst. Based on the given concept, find 2 similar EXISTING success cases.
+[DIVERSITY RULE — MOST IMPORTANT]
+- The 2 cases MUST come from clearly DIFFERENT industries (e.g. one healthcare service and one consumer hardware brand, or one retail platform and one mobility/energy company). Never pick two companies from the same or adjacent industry.
+- They MUST also differ in character: vary at least two of — company scale (global giant vs. fast-growing startup), business model (product vs. service/platform/subscription), customer (B2C vs. B2B), and region (US vs. Europe vs. Asia).
+- Each case should connect to the concept from a different angle, so the comparison feels surprising and inspiring rather than repetitive.
+- 'industry' field: short Korean label for the industry and character, e.g. "헬스케어 · 구독형 스타트업".
 [RULES]
-- Well-known US/Europe brands. Quantitative data required.
+- Well-known global brands. Quantitative data required.
 - caseName format: "English Name (한글 표기)". e.g. "Virta Health (비르타 헬스)"
 - caseCharacteristics: about 5 sentences covering When (founding year), Who (founder), How (core technology or business method), What (main business/goal).
 - successFactor / businessResult / expansionFactor: about 3 lines each, detailed.
 [MODIFICATION RULE] If an [INSTRUCTION] is provided, adjust the case selection or analysis depth accordingly.
-Return RAW JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "caseCharacteristics": "...", "successFactor": "...", "businessResult": "...", "expansionFactor": "..." } ] }
+Return RAW JSON: { "selectedConceptName": "...", "cases": [ { "caseName": "...", "industry": "...", "caseCharacteristics": "...", "successFactor": "...", "businessResult": "...", "expansionFactor": "..." } ] }
 [TONE] Korean. Storytelling format for university students. No markdown.`,
 
         "ASK_AI": `You are a Professional Trend Consultant. Answer the user's question based on the provided context.
@@ -547,6 +553,7 @@ Return RAW JSON: { "answer": "..." }
       function normBenchmark(res, fallbackName) {
         const cases = (res && Array.isArray(res.cases) ? res.cases : []).filter(c => c && typeof c === "object").map(c => ({
           caseName: c.caseName || "이름 없는 사례",
+          industry: c.industry || "",
           caseCharacteristics: c.caseCharacteristics || NO_DATA,
           successFactor: c.successFactor || NO_DATA,
           businessResult: c.businessResult || NO_DATA,
@@ -605,6 +612,14 @@ Return RAW JSON: { "answer": "..." }
           else if (r === "full") toast("저장 공간이 부족합니다. 오래된 프로젝트를 삭제해 주세요.", "error");
         },
 
+        // 상단 홈 버튼 — 지금까지의 진행 상태를 저장한 뒤 '새 프로젝트 시작' 화면으로 이동
+        goHome() {
+          if (state.isAnalyzing) return;
+          try { persist(true); } catch (e) { console.warn("저장 실패", e); }
+          Object.keys(drafts).forEach(k => { if (k.startsWith("ins-") || k.startsWith("sel-") || k.startsWith("qa-")) delete drafts[k]; });
+          setState({ step: 0, errorMsg: null, showQaHistory: false, qaModal: { visible: false, question: "", answer: "" } });
+        },
+
         toggleKeyword(code) {
           // 다른 연도에서 고른 키워드도 해제할 수 있도록 전체 연도에서 검색
           const pool = TREND_YEARS.flatMap(y => TREND_DATA[y]);
@@ -619,7 +634,7 @@ Return RAW JSON: { "answer": "..." }
 
         async runDeepDive() {
           if (!state.step1Keywords.length) return;
-          const result = await withLoading("육하원칙으로 분석하는 중", async () => {
+          const result = await withLoading("선택한 키워드를 육하원칙으로 분석하고 있습니다", async () => {
             const acc = {};
             for (const kw of state.step1Keywords) {
               const r = await callGemini(PROMPTS["5W1H"], `Keyword: ${kw.kr} (${kw.en})\nSummary: ${kw.summary}`);
@@ -633,7 +648,7 @@ Return RAW JSON: { "answer": "..." }
         async runSteep() {
           const kws = state.step1Keywords;
           if (!kws.length) return;
-          const res = await withLoading("과거·현재·미래를 분석하는 중", () =>
+          const res = await withLoading("선택한 키워드의 과거 현재 미래를 분석하고 있습니다", () =>
             callGemini(PROMPTS["STEEP"], `Keywords:\n${kws.map(k => `- ${k.kr}: ${k.summary}`).join("\n")}`));
           if (res) setState({ steepResult: normSteep(res, kws), step: 3, ...invalidateFrom(5) });
         },
@@ -642,7 +657,7 @@ Return RAW JSON: { "answer": "..." }
           const kws = state.step1Keywords;
           let prompt = `Trends:\n${kws.map(k => `- ${k.kr}: ${k.summary}`).join("\n")}\nTarget year: ${state.targetYear}`;
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
-          const res = await withLoading(instruction ? "미래 트렌드를 수정하는 중" : "미래를 예측하는 중",
+          const res = await withLoading(instruction ? "미래 트렌드를 다시 예측하고 있습니다" : "선택한 트렌드들의 융합된 미래 예측 중",
             () => callGemini(PROMPTS["SCENARIO"], prompt));
           if (res) {
             drafts["scenario-instruction"] = "";
@@ -694,12 +709,46 @@ Integrated insight: ${JSON.stringify(insight)}`;
           if (!c) { setState({ errorMsg: "컨셉을 먼저 선택해 주세요." }); return; }
           let prompt = `Concept: ${c.title}\nCore value: ${c.coreValue}`;
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
-          const res = await withLoading("유사한 글로벌 사례를 찾는 중",
+          const res = await withLoading(instruction ? "케이스스터디를 다시 찾고 있습니다" : "서로 다른 분야의 글로벌 사례를 찾고 있습니다",
             () => callGemini(PROMPTS["BENCHMARK"], prompt));
           if (res) {
             drafts["benchmark-instruction"] = "";
             setState({ selectedConceptIndex: idx, benchmarkResult: normBenchmark(res, c.title), step: 9 });
           }
+        },
+
+        /* ---- 수정 지시 : 번호로 항목을 골라 그 항목만, 또는 전체를 다시 생성 ---- */
+        pickEditTarget(key, val) {
+          drafts[`sel-${key}`] = val === "all" ? "all" : Number(val);
+          render(false);
+        },
+
+        async applyEdit(key) {
+          const cfg = EDIT[key];
+          if (!cfg || state.isAnalyzing) return;
+          const items = cfg.items();
+          const insId = `ins-${key}`;
+          const ins = draft(insId).trim();
+          const target = currentTarget(key, items);
+          if (target === "all") {
+            if (cfg.downstreamAll() && !window.confirm(`${cfg.downstreamText} 계속할까요?`)) return;
+            const ok = await cfg.regenerateAll(ins);
+            if (ok) { drafts[insId] = ""; drafts[`sel-${key}`] = "all"; render(false); }
+            return;
+          }
+          const idx = target;
+          const affects = cfg.downstreamOne(idx);
+          if (affects && !window.confirm(`${pad2(idx)}번은 다음 단계에서 선택한 항목입니다. 수정하면 다음 단계 결과가 지워집니다. 계속할까요?`)) return;
+          const projectId = state.projectId;
+          const res = await withLoading(`${pad2(idx)}번 ${cfg.label} 항목만 다시 작성하고 있습니다`,
+            () => callGemini(cfg.system(), cfg.onePrompt(idx, ins)));
+          if (!res || state.projectId !== projectId) return;
+          let item;
+          try { item = cfg.normOne(res, idx); } catch (e) { item = null; }
+          if (!item) { setState({ errorMsg: "수정된 항목을 해석하지 못했습니다. 다시 시도해 주세요." }); return; }
+          drafts[insId] = "";
+          setState({ ...cfg.replace(idx, item), ...(affects ? cfg.invalidate() : {}) });
+          toast(`${pad2(idx)}번 ${cfg.label} 항목만 수정했습니다. 다른 항목은 그대로 유지됩니다.`, "ok");
         },
 
         async askAI(inputId, contextKey) {
@@ -715,6 +764,163 @@ Integrated insight: ${JSON.stringify(insight)}`;
         }
       };
       window.Actions = Actions;
+
+      /* =========================================================
+         9-B. 단계별 수정 설정 — 번호(01, 02 …)로 항목을 고르고 지시합니다
+         ========================================================= */
+      const pad2 = (n) => String(n).padStart(2, "0");
+
+      function currentTarget(key, items) {
+        const raw = drafts[`sel-${key}`];
+        if (raw === undefined || raw === "all") return "all";
+        const n = Number(raw);
+        return items.some(it => it.index === n) ? n : "all";
+      }
+
+      const numbered = (arr, titleFn) => arr.map((x, i) => ({ index: i + 1, title: titleFn(x) }));
+
+      function partialBlock(listJson, idx, ins, format, extraRule) {
+        return `
+
+[PARTIAL EDIT MODE — this overrides the count rules and the return format above]
+Current items (numbered from 1):
+${listJson}
+Rewrite ONLY item #${idx}. Keep it clearly distinct from the other items.${extraRule ? "\n" + extraRule : ""}
+Edit instruction: ${ins || "다른 항목과 겹치지 않게, 더 구체적이고 깊이 있게 다시 작성해 주세요."}
+Return RAW JSON in exactly this shape (ONE item only): ${format}`;
+      }
+      const numberedJson = (arr) => arr.map((x, i) => `#${i + 1}: ${JSON.stringify(x)}`).join("\n");
+
+      async function regenDeepDive(ins) {
+        const out = await withLoading("선택한 키워드를 육하원칙으로 다시 분석하고 있습니다", async () => {
+          const acc = {};
+          for (const kw of state.step1Keywords) {
+            let p = `Keyword: ${kw.kr} (${kw.en})\nSummary: ${kw.summary}`;
+            if (ins) p += `\n[INSTRUCTION]: ${ins}`;
+            acc[kw.code] = normDeepDive(await callGemini(PROMPTS["5W1H"], p));
+          }
+          return acc;
+        });
+        if (out) setState({ deepDiveResult: out });
+        return !!out;
+      }
+
+      async function regenSteep(ins) {
+        const kws = state.step1Keywords;
+        let p = `Keywords:\n${kws.map(k => `- ${k.kr}: ${k.summary}`).join("\n")}`;
+        if (ins) p += `\n[INSTRUCTION]: ${ins}`;
+        const res = await withLoading("선택한 키워드의 과거 현재 미래를 다시 분석하고 있습니다", () => callGemini(PROMPTS["STEEP"], p));
+        if (res) setState({ steepResult: normSteep(res, kws) });
+        return !!res;
+      }
+
+      const EDIT = {
+        deepdive: {
+          label: "육하원칙",
+          items: () => numbered(state.step1Keywords, k => k.kr),
+          downstreamAll: () => false, downstreamText: "",
+          downstreamOne: () => false, invalidate: () => ({}),
+          regenerateAll: regenDeepDive,
+          system: () => PROMPTS["5W1H"],
+          onePrompt: (idx, ins) => {
+            const kw = state.step1Keywords[idx - 1];
+            const cur = state.deepDiveResult && state.deepDiveResult[kw.code];
+            return `Keyword: ${kw.kr} (${kw.en})\nSummary: ${kw.summary}\nCurrent analysis: ${JSON.stringify(cur || {})}\n[INSTRUCTION]: ${ins || "더 구체적이고 깊이 있게 다시 분석해 주세요."}`;
+          },
+          normOne: (res) => normDeepDive(res),
+          replace: (idx, item) => ({ deepDiveResult: { ...state.deepDiveResult, [state.step1Keywords[idx - 1].code]: item } })
+        },
+        steep: {
+          label: "과거·현재·미래",
+          items: () => numbered(state.steepResult || [], s => s.keyword),
+          downstreamAll: () => false, downstreamText: "",
+          downstreamOne: () => false, invalidate: () => ({}),
+          regenerateAll: regenSteep,
+          system: () => PROMPTS["STEEP"],
+          onePrompt: (idx, ins) => {
+            const kw = state.step1Keywords[idx - 1] || { kr: state.steepResult[idx - 1].keyword, summary: "" };
+            return `Keywords:\n- ${kw.kr}: ${kw.summary}\nCurrent analysis: ${JSON.stringify(state.steepResult[idx - 1])}\n[INSTRUCTION]: ${ins || "더 구체적이고 깊이 있게 다시 분석해 주세요."}\nReturn a JSON array with exactly ONE element for this keyword.`;
+          },
+          normOne: (res, idx) => {
+            const kw = state.step1Keywords[idx - 1] || { kr: state.steepResult[idx - 1].keyword };
+            return normSteep(res, [kw])[0];
+          },
+          replace: (idx, item) => ({ steepResult: state.steepResult.map((s, i) => i === idx - 1 ? item : s) })
+        },
+        scenario: {
+          label: "미래 트렌드",
+          items: () => numbered(state.futureScenario ? state.futureScenario.trends : [], t => t.futureTrendKeyword),
+          downstreamAll: () => !!state.reasoningResult,
+          downstreamText: "전체를 다시 생성하면 통합 인사이트 이후 단계 결과가 지워집니다.",
+          downstreamOne: (idx) => state.selectedScenarioIndex === idx - 1 && !!state.reasoningResult,
+          invalidate: () => invalidateFrom(7),
+          regenerateAll: async (ins) => { await Actions.runScenario(ins || "앞의 결과와 다른 관점으로 다시 예측해 주세요."); return !!state.futureScenario; },
+          system: () => PROMPTS["SCENARIO"],
+          onePrompt: (idx, ins) => `Trends:\n${state.step1Keywords.map(k => `- ${k.kr}: ${k.summary}`).join("\n")}\nTarget year: ${state.targetYear}`
+            + partialBlock(numberedJson(state.futureScenario.trends), idx, ins,
+              `{ "trends": [ { "futureTrendKeyword": "...", "characteristics": "...", "userScenario": "..." } ] }`),
+          normOne: (res) => normScenario(res).trends[0],
+          replace: (idx, item) => ({ futureScenario: { trends: state.futureScenario.trends.map((t, i) => i === idx - 1 ? item : t) } })
+        },
+        reasoning: {
+          label: "인사이트",
+          items: () => numbered(state.reasoningResult ? state.reasoningResult.insights : [], x => x.headline),
+          downstreamAll: () => state.concepts.length > 0,
+          downstreamText: "전체를 다시 생성하면 디자인 컨셉 이후 단계 결과가 지워집니다.",
+          downstreamOne: (idx) => state.selectedInsightIndex === idx - 1 && state.concepts.length > 0,
+          invalidate: () => invalidateFrom(8),
+          regenerateAll: async (ins) => { await Actions.runReasoning(ins || "앞의 결과와 다른 관점으로 다시 추론해 주세요."); return true; },
+          system: () => PROMPTS["REASONING"],
+          onePrompt: (idx, ins) => {
+            const trends = state.futureScenario.trends;
+            const picked = trends[state.selectedScenarioIndex] || trends[0];
+            return `Task goal: ${state.researchTopic}\nInitial trends: ${state.step1Keywords.map(k => k.kr).join(", ")}\nChosen future trend: ${JSON.stringify(picked)}`
+              + partialBlock(numberedJson(state.reasoningResult.insights), idx, ins,
+                `{ "insights": [ { "headline": "...", "description": "..." } ] }`, "The headline MUST still follow one of the 4 headline patterns.");
+          },
+          normOne: (res) => normInsights(res).insights[0],
+          replace: (idx, item) => ({ reasoningResult: { insights: state.reasoningResult.insights.map((x, i) => i === idx - 1 ? item : x) } })
+        },
+        concepts: {
+          label: "디자인 컨셉",
+          items: () => numbered(state.concepts, c => c.title),
+          downstreamAll: () => !!state.benchmarkResult,
+          downstreamText: "전체를 다시 생성하면 케이스스터디 결과가 지워집니다.",
+          downstreamOne: (idx) => state.selectedConceptIndex === idx - 1 && !!state.benchmarkResult,
+          invalidate: () => invalidateFrom(9),
+          regenerateAll: async (ins) => { await Actions.runIdeation(ins || "앞의 결과와 다른 컨셉으로 다시 제안해 주세요."); return true; },
+          system: () => PROMPTS["CONCEPTS"],
+          onePrompt: (idx, ins) => {
+            const insight = state.reasoningResult.insights[state.selectedInsightIndex];
+            const slim = state.concepts.map(({ perspective, ...rest }) => rest);
+            return `Task: ${state.researchTopic}\nPerspective: ${state.perspective}\nIntegrated insight: ${JSON.stringify(insight)}`
+              + partialBlock(numberedJson(slim), idx, ins,
+                `[ { "title": "...", "persona": "...", "description": "...", "coreValue": "Who: ...\\nPurpose: ...\\nService: ...", "keyFeatures": [ { "title": "...", "desc": "..." } ] } ]`);
+          },
+          normOne: (res) => normConcepts(res)[0],
+          replace: (idx, item) => ({
+            concepts: state.concepts.map((c, i) => i === idx - 1 ? item : c),
+            allGeneratedConcepts: [...state.allGeneratedConcepts, item]
+          })
+        },
+        benchmark: {
+          label: "케이스스터디",
+          items: () => numbered(state.benchmarkResult ? state.benchmarkResult.cases : [], c => c.caseName),
+          downstreamAll: () => false, downstreamText: "",
+          downstreamOne: () => false, invalidate: () => ({}),
+          regenerateAll: async (ins) => { await Actions.runBenchmark(null, ins || "앞의 사례와 겹치지 않는, 서로 다른 분야의 사례 2개로 다시 찾아 주세요."); return true; },
+          system: () => PROMPTS["BENCHMARK"],
+          onePrompt: (idx, ins) => {
+            const c = state.concepts[state.selectedConceptIndex] || {};
+            return `Concept: ${c.title || state.benchmarkResult.selectedConceptName}\nCore value: ${c.coreValue || ""}`
+              + partialBlock(numberedJson(state.benchmarkResult.cases), idx, ins,
+                `{ "selectedConceptName": "...", "cases": [ { "caseName": "...", "industry": "...", "caseCharacteristics": "...", "successFactor": "...", "businessResult": "...", "expansionFactor": "..." } ] }`,
+                "The new case MUST be a different company from a clearly different industry and character than every other current case.");
+          },
+          normOne: (res) => normBenchmark(res, state.benchmarkResult.selectedConceptName).cases[0],
+          replace: (idx, item) => ({ benchmarkResult: { ...state.benchmarkResult, cases: state.benchmarkResult.cases.map((c, i) => i === idx - 1 ? item : c) } })
+        }
+      };
 
       /* =========================================================
          10. 단계 이동 규칙
@@ -792,7 +998,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
               ${showNext ? `<button type="button" aria-label="다음 단계로" onclick="setState({step:${next}})" class="p-2.5 rounded-full hover:bg-slate-100 active:bg-slate-200 text-slate-900"><i data-lucide="chevron-right" class="w-6 h-6"></i></button>` : ""}
               <button type="button" aria-label="진행 상태 저장" onclick="Actions.saveNow()" class="p-2.5 rounded-full hover:bg-slate-100 active:bg-slate-200"><i data-lucide="save" class="w-6 h-6"></i></button>
               <button type="button" aria-label="리포트 복사" onclick="copyReport()" class="p-2.5 rounded-full hover:bg-slate-100 active:bg-slate-200"><i data-lucide="copy" class="w-6 h-6"></i></button>
-              <button type="button" aria-label="처음 화면으로" onclick="setState({step:0})" class="p-2.5 rounded-full hover:bg-slate-100 active:bg-slate-200"><i data-lucide="home" class="w-6 h-6"></i></button>
+              <button type="button" aria-label="새 프로젝트 시작 화면으로" onclick="Actions.goHome()" class="p-2.5 rounded-full hover:bg-slate-100 active:bg-slate-200"><i data-lucide="home" class="w-6 h-6"></i></button>
             </div>
           </div>
           ${cur ? `<div class="px-4 pb-2 flex items-center gap-3">
@@ -811,38 +1017,72 @@ Integrated insight: ${JSON.stringify(insight)}`;
           class="w-full py-5 rounded-2xl font-bold t-h3 text-white bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-500 shadow-lg active:scale-[0.98] transition-all">${esc(label)}</button>`;
       }
 
-      function instructionBox(id, onSend, placeholder) {
-        return `<section class="p-6 bg-slate-800 rounded-3xl shadow-xl mt-10">
-          <h3 class="t-label text-blue-300 mb-3">AI 수정 지시</h3>
-          <div class="flex gap-2">
-            <input type="text" id="${id}" value="${escAttr(draft(id))}" oninput="setDraft('${id}', this.value)"
-              class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3.5 text-white t-small outline-none placeholder:text-slate-400 focus:border-blue-400"
-              placeholder="${escAttr(placeholder)}" aria-label="수정 지시 입력">
-            <button type="button" aria-label="수정 요청 보내기" onclick="${onSend}" class="bg-blue-600 hover:bg-blue-500 text-white px-4 rounded-xl active:scale-95 transition-all"><i data-lucide="send" class="w-5 h-5"></i></button>
+      /* 수정 지시 — 첨부 프로그램과 같은 형식: 번호로 항목을 고르고 그 항목만, 또는 전체를 다시 생성 */
+      function instructionBox(key, placeholder) {
+        const cfg = EDIT[key];
+        const items = cfg.items();
+        if (!items.length) return "";
+        const id = `ins-${key}`;
+        const sel = currentTarget(key, items);
+        const selItem = sel === "all" ? null : items.find(it => it.index === sel);
+        const btn = (val, text, aria) => {
+          const on = String(val) === String(sel);
+          return `<button type="button" aria-pressed="${on}" aria-label="${escAttr(aria)}" onclick="Actions.pickEditTarget('${key}','${val}')"
+            class="h-14 rounded-2xl border font-bold t-small tabular-nums transition-all active:scale-95 ${on ? "bg-blue-50 border-blue-800 text-blue-900" : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"}">${esc(text)}</button>`;
+        };
+        const target = selItem
+          ? `${pad2(selItem.index)} · ${selItem.title}`
+          : `전체 · 이 단계의 모든 ${cfg.label} 항목을 다시 생성합니다`;
+        const downNote = !selItem && cfg.downstreamAll() ? cfg.downstreamText : "";
+        return `<section class="mt-10 p-5 bg-slate-50 rounded-[2rem] border-2 border-slate-200 shadow-sm">
+          <h3 class="t-h3 text-slate-600 mb-4">수정 지시</h3>
+          <h4 class="t-small font-bold text-slate-700 mb-2">수정할 항목</h4>
+          <div class="grid grid-cols-4 gap-2 mb-4" role="group" aria-label="수정할 항목 선택">
+            ${items.map(it => btn(it.index, pad2(it.index), `${pad2(it.index)}번 ${it.title}`)).join("")}
+            ${btn("all", "전체", "전체 항목")}
           </div>
+          <p class="t-small text-slate-800 mb-2 prose-ko">${esc(target)}</p>
+          ${downNote ? `<p class="t-meta text-slate-500 mb-2 prose-ko">${esc(downNote)}</p>` : ""}
+          ${selItem ? `<p class="t-meta text-slate-500 mb-2 prose-ko">선택한 항목만 바뀌고, 다른 항목은 그대로 유지됩니다.</p>` : ""}
+          <label for="${id}" class="sr-only">수정 지시 입력</label>
+          <textarea id="${id}" rows="4" oninput="setDraft('${id}', this.value)"
+            class="w-full block min-w-0 mt-2 bg-white border border-slate-300 rounded-2xl px-4 py-3.5 text-slate-900 t-small outline-none resize-none placeholder:text-slate-400 focus:border-blue-700 mb-4"
+            placeholder="${escAttr(placeholder)}">${esc(draft(id))}</textarea>
+          <button type="button" onclick="Actions.applyEdit('${key}')"
+            class="w-full py-4 rounded-2xl bg-white border-2 border-slate-300 hover:bg-slate-100 text-slate-800 font-bold t-small flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+            <i data-lucide="send" class="w-5 h-5"></i>${selItem ? `${esc(pad2(selItem.index))}번 항목만 수정` : "전체 다시 생성"}
+          </button>
         </section>`;
       }
 
+      /* AI에게 질문하기 — 수정 지시 창과 같은 밝은 카드 형식 */
       function qaBox(inputId, contextKey) {
         const hist = state.qaHistory;
-        return `<section class="p-6 bg-slate-700 rounded-3xl shadow-xl mt-6">
-          <h3 class="t-label text-blue-200 mb-3">AI에게 질문하기</h3>
-          <div class="flex gap-2">
-            <input type="text" id="${inputId}" value="${escAttr(draft(inputId))}" oninput="setDraft('${inputId}', this.value)"
-              class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3.5 text-white t-small outline-none placeholder:text-slate-300 focus:border-blue-400"
-              placeholder="분석 결과에 대해 궁금한 점" aria-label="질문 입력">
-            <button type="button" aria-label="질문 보내기" onclick="Actions.askAI('${inputId}','${contextKey}')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 rounded-xl active:scale-95 transition-all"><i data-lucide="send" class="w-5 h-5"></i></button>
-          </div>
+        return `<section class="mt-6 p-5 bg-slate-50 rounded-[2rem] border-2 border-slate-200 shadow-sm">
+          <h3 class="t-h3 text-slate-600 mb-4">AI에게 질문하기</h3>
+          <label for="${inputId}" class="sr-only">질문 입력</label>
+          <textarea id="${inputId}" rows="3" oninput="setDraft('${inputId}', this.value)"
+            class="w-full block min-w-0 bg-white border border-slate-300 rounded-2xl px-4 py-3.5 text-slate-900 t-small outline-none resize-none placeholder:text-slate-400 focus:border-blue-700 mb-4"
+            placeholder="분석 결과에 대해 궁금한 점을 적어 주세요">${esc(draft(inputId))}</textarea>
+          <button type="button" onclick="Actions.askAI('${inputId}','${contextKey}')"
+            class="w-full py-4 rounded-2xl bg-white border-2 border-slate-300 hover:bg-slate-100 text-slate-800 font-bold t-small flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+            <i data-lucide="message-circle" class="w-5 h-5"></i>질문하기
+          </button>
           ${hist.length ? `
-          <button type="button" onclick="setState({showQaHistory:${!state.showQaHistory}})" class="mt-4 t-meta font-bold text-blue-200 flex items-center gap-1.5">
+          <button type="button" onclick="setState({showQaHistory:${!state.showQaHistory}})" class="mt-4 t-meta font-bold text-slate-600 flex items-center gap-1.5">
             <i data-lucide="${state.showQaHistory ? "chevron-up" : "chevron-down"}" class="w-4 h-4"></i> 지난 질문 ${hist.length}건 ${state.showQaHistory ? "접기" : "보기"}
           </button>
-          ${state.showQaHistory ? `<div class="mt-4 space-y-4 max-h-72 overflow-y-auto no-scrollbar">
-            ${hist.slice().reverse().map(h => `<div class="bg-white/5 rounded-2xl p-4 border border-white/10">
-              <p class="t-meta font-bold text-blue-200 mb-1">Q. ${esc(h.q)}</p>
-              <p class="t-small text-slate-200 prose-ko">${esc(h.a)}</p></div>`).join("")}
+          ${state.showQaHistory ? `<div class="mt-4 space-y-3 max-h-72 overflow-y-auto no-scrollbar">
+            ${hist.slice().reverse().map(h => `<div class="bg-white rounded-2xl p-4 border border-slate-200">
+              <p class="t-meta font-bold text-blue-800 mb-1">Q. ${esc(h.q)}</p>
+              <p class="t-small text-slate-700 prose-ko">${esc(h.a)}</p></div>`).join("")}
           </div>` : ""}` : ""}
         </section>`;
+      }
+
+      /* 결과 카드 번호 배지 */
+      function numBadge(n, dark) {
+        return `<span class="w-9 h-9 rounded-full inline-flex items-center justify-center flex-shrink-0 font-bold t-meta tabular-nums ${dark ? "bg-white text-slate-900" : "bg-slate-900 text-white"}">${pad2(n)}</span>`;
       }
 
       /* =========================================================
@@ -904,7 +1144,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
         if (state.benchmarkResult) {
           L.push(`[8. 케이스스터디 — ${state.benchmarkResult.selectedConceptName}]`);
           state.benchmarkResult.cases.forEach((c, i) => {
-            L.push(`▶ Case #${i + 1}. ${c.caseName}`, `  특징: ${c.caseCharacteristics}`,
+            L.push(`▶ Case #${i + 1}. ${c.caseName}${c.industry ? " — " + c.industry : ""}`, `  특징: ${c.caseCharacteristics}`,
               `  성공 요인: ${c.successFactor}`, `  비즈니스 결과: ${c.businessResult}`, `  확장 가능성: ${c.expansionFactor}`, "");
           });
         }
@@ -1027,12 +1267,12 @@ Integrated insight: ${JSON.stringify(insight)}`;
       }
 
       function viewDeepDive() {
-        const blocks = state.step1Keywords.map(kw => {
+        const blocks = state.step1Keywords.map((kw, i) => {
           const res = state.deepDiveResult && state.deepDiveResult[kw.code];
           if (!res) return `<div class="mb-10 p-6 bg-amber-50 border border-amber-200 rounded-3xl t-small text-amber-900">‘${esc(kw.kr)}’의 분석 결과를 불러오지 못했습니다. 이전 단계에서 다시 실행해 주세요.</div>`;
           return `<section class="mb-12 animate-fade-in">
             <div class="bg-slate-900 rounded-[2rem] p-7 text-white mb-5 shadow-xl">
-              <span class="inline-block bg-blue-600 t-meta font-bold px-3 py-1 rounded-full mb-3">KEYWORD</span>
+              <div class="flex items-center gap-2 mb-3">${numBadge(i + 1, true)}<span class="inline-block bg-blue-600 t-meta font-bold px-3 py-1 rounded-full">KEYWORD</span></div>
               <h2 class="t-h1 italic mb-1">${esc(kw.kr)}</h2>
               <p class="t-small text-slate-300 italic mb-4">${esc(kw.en)}</p>
               <p class="t-small text-slate-200 bg-white/5 p-5 rounded-2xl border border-white/10">${esc(kw.summary)}</p>
@@ -1049,15 +1289,16 @@ Integrated insight: ${JSON.stringify(insight)}`;
         return `<div class="pt-24 px-4 dock-space animate-fade-in">
           ${header("육하원칙 분석", 1)}
           ${blocks}
+          ${instructionBox("deepdive", "예: WHY 항목에 사회적 배경을 더 넣어 주세요")}
           ${qaBox("qa-deepdive", "deepDiveResult")}
           ${dock(primaryBtn(state.steepResult ? "과거·현재·미래 다시 분석" : "과거·현재·미래 분석", "Actions.runSteep()"))}
         </div>`;
       }
 
       function viewSteep() {
-        const body = state.steepResult.map(item => `
+        const body = state.steepResult.map((item, i) => `
           <section class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200">
-            <h2 class="t-h1 text-slate-900 mb-7 flex items-center gap-3"><span class="w-2 h-8 bg-blue-900 rounded-full"></span>${esc(item.keyword)}</h2>
+            <h2 class="t-h1 text-slate-900 mb-7 flex items-center gap-3">${numBadge(i + 1)}${esc(item.keyword)}</h2>
             ${["past", "present", "future"].map(t => `<div class="mb-9 last:mb-0">
               <h3 class="t-label text-blue-700 mb-3">${esc(TIMELINE_LABEL[t])}</h3>
               <p class="t-body text-slate-800 prose-ko mb-5">${esc(item.timeline[t].desc)}</p>
@@ -1072,8 +1313,9 @@ Integrated insight: ${JSON.stringify(insight)}`;
         return `<div class="pt-24 px-4 dock-space animate-fade-in">
           ${header("과거·현재·미래", 2)}
           <div class="space-y-6">${body}</div>
+          ${instructionBox("steep", "예: 미래 부분에 기술 변화를 더 구체적으로")}
           ${qaBox("qa-steep", "steepResult")}
-          ${dock(primaryBtn("미래 트렌드 예측하기", "setState({step:4})"))}
+          ${dock(primaryBtn("선택 트렌드들의 융합된 미래 예측", "setState({step:4})"))}
         </div>`;
       }
 
@@ -1089,7 +1331,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
             oninput="document.getElementById('year-display').textContent=this.value; this.setAttribute('aria-valuenow', this.value); setDraft('targetYear', parseInt(this.value,10));"
             class="w-full appearance-none bg-transparent cursor-pointer">
           <div class="flex justify-between t-meta text-slate-500 mt-2"><span>2028</span><span>2035</span></div>
-          ${dock(primaryBtn("미래 예측하기", "Actions.runScenario()"))}
+          ${dock(primaryBtn("선택 트렌드들의 융합된 미래 예측", "Actions.runScenario()"))}
         </div>`;
       }
 
@@ -1099,7 +1341,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
           return `<section class="mb-10 last:mb-0 animate-fade-in">
             <div class="bg-slate-900 rounded-[2rem] p-7 text-white mb-5 shadow-xl border-2 ${on ? "border-blue-500" : "border-transparent"}">
               <div class="flex items-center justify-between gap-3 mb-3">
-                <span class="t-label text-blue-300">미래 트렌드 ${i + 1}</span>
+                <span class="flex items-center gap-2">${numBadge(i + 1, true)}<span class="t-label text-blue-300">미래 트렌드</span></span>
                 <button type="button" aria-pressed="${on}" onclick="setState({selectedScenarioIndex:${i}, ...invalidateFrom(7)})"
                   class="px-5 py-2 rounded-full t-meta font-bold transition-all active:scale-95 flex-shrink-0 ${on ? "bg-blue-600 text-white" : "bg-white/10 text-white border border-white/30 hover:bg-white/20"}">${on ? "선택됨" : "선택"}</button>
               </div>
@@ -1123,7 +1365,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
           ${header("미래 트렌드", 4)}
           <p class="t-small text-slate-500 mb-6">${state.targetYear}년 기준으로 예측한 트렌드입니다. 하나를 선택하면 다음 단계로 넘어갑니다.</p>
           ${cards}
-          ${instructionBox("scenario-instruction", "Actions.runScenario(document.getElementById('scenario-instruction').value)", "예: 더 경제적인 관점으로 수정")}
+          ${instructionBox("scenario", "예: 01번을 더 경제적인 관점으로 바꿔 주세요")}
           ${qaBox("qa-scenario", "futureScenario")}
           ${dock(primaryBtn(picked ? "통합 추론 진행" : "트렌드를 하나 선택해 주세요", "setState({step:6})", !picked))}
         </div>`;
@@ -1148,7 +1390,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
           const on = state.selectedInsightIndex === i;
           return `<article class="bg-white p-6 rounded-[2rem] shadow-sm border-2 transition-all ${on ? "border-blue-600 bg-blue-50/50" : "border-slate-200"}">
             <div class="flex items-center justify-between gap-3 mb-4">
-              <span class="t-label text-blue-700">Insight ${i + 1}</span>
+              <span class="flex items-center gap-2">${numBadge(i + 1)}<span class="t-label text-blue-700">INSIGHT</span></span>
               <button type="button" aria-pressed="${on}" onclick="setState({selectedInsightIndex:${i}, ...invalidateFrom(8)})"
                 class="px-4 py-2 rounded-full t-meta font-bold flex-shrink-0 transition-all active:scale-95 ${on ? "bg-blue-600 text-white shadow-md" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}">${on ? "선택됨" : "선택"}</button>
             </div>
@@ -1163,7 +1405,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
           <h2 class="t-h1 text-slate-900 mb-2">통합 추론 리포트</h2>
           <p class="t-small text-slate-500 mb-6">과제: ${esc(state.researchTopic)}</p>
           <div class="space-y-5">${cards}</div>
-          ${instructionBox("reasoning-instruction", "Actions.runReasoning(document.getElementById('reasoning-instruction').value)", "예: 더 경제적인 관점으로 수정")}
+          ${instructionBox("reasoning", "예: 소비자 행동 근거를 더 구체적으로")}
           ${qaBox("qa-reasoning", "reasoningResult")}
           ${dock(primaryBtn(picked ? "디자인 컨셉 제안받기" : "인사이트를 하나 선택해 주세요", "Actions.runIdeation()", !picked))}
         </div>`;
@@ -1176,7 +1418,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
           return `<article class="animate-fade-in">
             ${c.persona ? `<p class="t-small text-indigo-700 font-bold mb-3 px-1 prose-ko">${esc(c.persona)}</p>` : ""}
             <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200">
-              <h3 class="t-h1 text-slate-900 mb-6">${i + 1}. ${esc(c.title)}</h3>
+              <h3 class="t-h1 text-slate-900 mb-6 flex items-start gap-3"><span class="mt-0.5">${numBadge(i + 1)}</span><span class="min-w-0">${esc(c.title)}</span></h3>
               <div class="space-y-7">
                 ${c.description ? `<div><h4 class="t-label text-slate-500 mb-2">개요</h4><p class="t-body text-slate-700 prose-ko">${esc(c.description)}</p></div>` : ""}
                 <div><h4 class="t-label text-slate-500 mb-2">핵심 가치</h4><p class="t-body font-medium text-slate-800 prose-ko">${cv}</p></div>
@@ -1203,18 +1445,19 @@ Integrated insight: ${JSON.stringify(insight)}`;
             </div>
             <p class="t-meta text-slate-500 mt-3">지금까지 생성한 컨셉 ${state.allGeneratedConcepts.length}개는 리포트 복사에 모두 포함됩니다.</p>
           </section>
-          ${instructionBox("ideation-instruction", "Actions.runIdeation(document.getElementById('ideation-instruction').value)", "예: 타겟을 더 좁혀서 다시 제안")}
+          ${instructionBox("concepts", "예: 타겟을 더 좁혀서 다시 제안")}
           ${qaBox("qa-concepts", "concepts")}
         </div>`;
       }
 
       function viewBenchmark() {
         const b = state.benchmarkResult;
-        const blocks = b.cases.map(c => `
+        const blocks = b.cases.map((c, i) => `
           <section class="animate-fade-in">
             <div class="bg-slate-900 rounded-[2rem] p-7 text-white mb-5 shadow-xl">
-              <span class="inline-block bg-blue-600 t-meta font-bold px-3 py-1 rounded-full mb-3">CASE STUDY</span>
-              <h2 class="t-h1 italic mb-4">${esc(c.caseName)}</h2>
+              <div class="flex items-center gap-2 mb-3">${numBadge(i + 1, true)}<span class="inline-block bg-blue-600 t-meta font-bold px-3 py-1 rounded-full">CASE STUDY</span></div>
+              <h2 class="t-h1 italic mb-2">${esc(c.caseName)}</h2>
+              ${c.industry ? `<p class="t-small text-sky-200 font-bold mb-4">${esc(c.industry)}</p>` : `<div class="mb-2"></div>`}
               <p class="t-small text-slate-200 bg-white/5 p-5 rounded-2xl border border-white/10 prose-ko">${esc(c.caseCharacteristics)}</p>
             </div>
             <div class="grid gap-4">
@@ -1234,7 +1477,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
             <h2 class="t-h1 text-slate-900 italic">${esc(b.selectedConceptName)}</h2>
           </div>
           <div class="space-y-10">${blocks}</div>
-          ${instructionBox("benchmark-instruction", "Actions.runBenchmark(null, document.getElementById('benchmark-instruction').value)", "예: 해외 스타트업 사례 위주로")}
+          ${instructionBox("benchmark", "예: 이 사례를 유럽의 서비스 기업으로 바꿔 주세요")}
           ${qaBox("qa-benchmark", "benchmarkResult")}
         </div>`;
       }
@@ -1245,8 +1488,9 @@ Integrated insight: ${JSON.stringify(insight)}`;
         if (state.isAnalyzing) {
           html += `<div class="fixed inset-0 z-[10000] bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center px-8 text-center max-w-[430px] mx-auto animate-fade-in" role="status" aria-live="polite">
             <div class="spinner-ring mb-8" role="presentation"></div>
-            <h2 class="t-h2 text-slate-900 mb-2">${esc(state.loadingMsg)}</h2>
-            <p class="t-small text-slate-500 mb-8">최대 1분 정도 걸릴 수 있습니다</p>
+            <h2 class="t-h2 text-slate-900 mb-3 w-full prose-center">${esc(state.loadingMsg)}</h2>
+            <p class="t-small text-slate-500 mb-2 w-full prose-center">최대 1분 정도 걸릴 수 있습니다</p>
+            <p class="t-small text-slate-500 mb-8 w-full prose-center">처리 중에는 화면을 켜 두고 다른 앱으로 전환하지 마세요</p>
             <button type="button" onclick="Actions.cancel()" class="px-7 py-3.5 rounded-2xl border-2 border-slate-300 text-slate-700 font-bold t-small hover:bg-slate-50 active:scale-95 transition-all">취소</button>
           </div>`;
         }
