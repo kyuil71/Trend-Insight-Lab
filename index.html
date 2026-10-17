@@ -11,7 +11,8 @@
   <meta name="theme-color" content="#0f172a" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <!-- default: 아이폰 홈 화면 실행 시 상단 메뉴가 시계·배터리 표시줄과 겹치지 않도록 -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Trend Lab" />
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -1871,7 +1872,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
         if (!isMobile || standalone) return;
         const root = document.documentElement;
         const request = root.requestFullscreen || root.webkitRequestFullscreen;
-        if (!request) return;   // iPhone 사파리는 미지원 → '홈 화면에 추가'로 전체 화면 사용
+        if (!request) return;   // 아이폰은 사파리·크롬 모두 웹페이지 전체 화면 미지원(iPad만 지원) → '홈 화면에 추가'로 주소창 없이 실행
         const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
         const enter = () => {
           if (isFull()) return;
