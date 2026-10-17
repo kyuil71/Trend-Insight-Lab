@@ -7,6 +7,8 @@
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
 
   <style>
@@ -347,6 +349,7 @@ Return RAW JSON: { "answer": "..." }
           allGeneratedConcepts: [],
           selectedConceptIndex: -1,
           benchmarkResult: null,
+          benchmarkFor: -1,
           expanded: {},
           qaHistory: []
         };
@@ -376,7 +379,7 @@ Return RAW JSON: { "answer": "..." }
         if (stage <= 5) { patch.futureScenario = null; patch.selectedScenarioIndex = -1; }
         if (stage <= 7) { patch.reasoningResult = null; patch.selectedInsightIndex = -1; }
         if (stage <= 8) { patch.concepts = []; patch.selectedConceptIndex = -1; }
-        if (stage <= 9) { patch.benchmarkResult = null; patch.selectedConceptIndex = -1; }
+        if (stage <= 9) { patch.benchmarkResult = null; patch.benchmarkFor = -1; if (stage < 9) patch.selectedConceptIndex = -1; }
         return patch;
       }
 
@@ -698,7 +701,8 @@ Integrated insight: ${JSON.stringify(insight)}`;
               concepts: list,
               allGeneratedConcepts: [...state.allGeneratedConcepts, ...list],
               step: 8,
-              ...invalidateFrom(9)
+              ...invalidateFrom(9),
+              selectedConceptIndex: -1
             });
           }
         },
@@ -713,7 +717,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
             () => callGemini(PROMPTS["BENCHMARK"], prompt));
           if (res) {
             drafts["benchmark-instruction"] = "";
-            setState({ selectedConceptIndex: idx, benchmarkResult: normBenchmark(res, c.title), step: 9 });
+            setState({ selectedConceptIndex: idx, benchmarkFor: idx, benchmarkResult: normBenchmark(res, c.title), step: 9 });
           }
         },
 
@@ -749,6 +753,27 @@ Integrated insight: ${JSON.stringify(insight)}`;
           drafts[insId] = "";
           setState({ ...cfg.replace(idx, item), ...(affects ? cfg.invalidate() : {}) });
           toast(`${pad2(idx)}번 ${cfg.label} 항목만 수정했습니다. 다른 항목은 그대로 유지됩니다.`, "ok");
+        },
+
+        // 컨셉 단계 하단 버튼 — 같은 컨셉의 결과가 이미 있으면 다시 만들지 않고 보여 줌
+        goBenchmark() {
+          const i = state.selectedConceptIndex;
+          if (i < 0 || !state.concepts[i]) { toast("컨셉을 하나 선택해 주세요.", "warn"); return; }
+          if (state.benchmarkResult && state.benchmarkFor === i) { setState({ step: 9 }); return; }
+          Actions.runBenchmark(i);
+        },
+
+        async exportPdf() {
+          if (state.isAnalyzing) return;
+          setState({ isAnalyzing: true, loadingMsg: "전체 분석 내용을 PDF로 만들고 있습니다", errorMsg: null });
+          try {
+            const ok = await exportPdf();
+            setState({ isAnalyzing: false });
+            if (ok) toast("PDF를 내려받았습니다.", "ok");
+          } catch (err) {
+            console.error(err);
+            setState({ isAnalyzing: false, errorMsg: (err && /^PDF 모듈/.test(err.message)) ? err.message : "PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요." });
+          }
         },
 
         async askAI(inputId, contextKey) {
@@ -886,7 +911,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           items: () => numbered(state.concepts, c => c.title),
           downstreamAll: () => !!state.benchmarkResult,
           downstreamText: "전체를 다시 생성하면 케이스스터디 결과가 지워집니다.",
-          downstreamOne: (idx) => state.selectedConceptIndex === idx - 1 && !!state.benchmarkResult,
+          downstreamOne: (idx) => state.benchmarkFor === idx - 1 && !!state.benchmarkResult,
           invalidate: () => invalidateFrom(9),
           regenerateAll: async (ins) => { await Actions.runIdeation(ins || "앞의 결과와 다른 컨셉으로 다시 제안해 주세요."); return true; },
           system: () => PROMPTS["CONCEPTS"],
@@ -1083,6 +1108,209 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
       /* 결과 카드 번호 배지 */
       function numBadge(n, dark) {
         return `<span class="w-9 h-9 rounded-full inline-flex items-center justify-center flex-shrink-0 font-bold t-meta tabular-nums ${dark ? "bg-white text-slate-900" : "bg-slate-900 text-white"}">${pad2(n)}</span>`;
+      }
+
+      /* =========================================================
+         12-B. PDF 리포트 — 블록 단위로 캡처해 A4에 배치합니다.
+         한 페이지보다 긴 블록은 축소하지 않고 다음 페이지로 이어 붙여
+         글자 크기가 끝까지 일정하게 유지됩니다.
+         ========================================================= */
+      const PDF = {
+        W: 794,
+        ACCENT: "#1d4ed8",
+        blk(inner, pad) {
+          return `<div style="box-sizing:border-box;width:794px;padding:${pad || "0 0 14px 0"};background:#ffffff;font-family:'Pretendard',sans-serif;color:#0f172a;word-break:keep-all;overflow-wrap:break-word;">${inner}</div>`;
+        },
+        heading(no, title, en) {
+          return PDF.blk(`<div data-pdf-head="1" style="border-top:3px solid #0f172a;padding-top:12px;margin-top:18px;">
+            <span style="font-size:22px;font-weight:800;">${esc(no)}</span>
+            <span style="font-size:22px;font-weight:800;margin-left:8px;">${esc(title)}</span>
+            <span style="font-size:16px;color:#64748b;margin-left:10px;">${esc(en)}</span>
+          </div>`);
+        },
+        card(inner, active) {
+          const border = active ? `2px solid ${PDF.ACCENT}` : "1px solid #cbd5e1";
+          return PDF.blk(`<div style="border:${border};border-radius:14px;padding:16px 18px;">${inner}</div>`, "0 0 10px 0");
+        },
+        title(no, text, sub, tag) {
+          return `<div style="font-size:18px;font-weight:800;line-height:1.5;">${no ? `<span style="color:${PDF.ACCENT};margin-right:8px;">${esc(no)}</span>` : ""}${esc(text)}${tag ? `<span style="font-size:13px;font-weight:700;color:#ffffff;background:${PDF.ACCENT};border-radius:999px;padding:2px 10px;margin-left:8px;vertical-align:middle;">${esc(tag)}</span>` : ""}</div>
+            ${sub ? `<div style="font-size:15px;color:#64748b;margin-top:2px;">${esc(sub)}</div>` : ""}`;
+        },
+        kv(k, v) {
+          if (!v) return "";
+          return `<div style="margin-top:10px;">
+            <div style="font-size:14px;font-weight:700;color:#64748b;">${esc(k)}</div>
+            <div style="font-size:16px;line-height:1.75;white-space:pre-line;">${esc(v)}</div>
+          </div>`;
+        },
+        para(v) {
+          return v ? `<div style="font-size:16px;line-height:1.75;margin-top:8px;white-space:pre-line;">${esc(v)}</div>` : "";
+        },
+        document() {
+          const out = [];
+          const kws = state.step1Keywords;
+          const now = new Date().toLocaleString("ko-KR");
+
+          out.push(PDF.blk(`<div style="padding-bottom:6px;">
+            <div style="font-size:14px;letter-spacing:0.12em;color:#64748b;font-weight:700;">TREND INSIGHT LAB</div>
+            <h1 style="font-size:30px;font-weight:800;margin:6px 0 10px;letter-spacing:-0.02em;">트렌드 인사이트 분석 리포트</h1>
+            ${state.researchTopic ? `<div style="font-size:20px;font-weight:700;">${esc(state.researchTopic)}</div>` : ""}
+            <div style="font-size:16px;color:#475569;margin-top:6px;">선택 트렌드 · ${esc(kws.map(k => k.kr).join(" + ") || "없음")}　|　예측 연도 · ${esc(state.targetYear)}년</div>
+            <div style="font-size:14px;color:#94a3b8;margin-top:10px;">${esc(now)}</div>
+          </div>`));
+
+          if (kws.length) {
+            out.push(PDF.heading("01", "선택 트렌드", "Selected Trends"));
+            kws.forEach((k, i) => out.push(PDF.card(`${PDF.title(pad2(i + 1), k.kr, k.en)}${PDF.para(k.summary)}`)));
+          }
+
+          if (state.deepDiveResult) {
+            out.push(PDF.heading("02", "육하원칙 분석", "5W1H Analysis"));
+            kws.forEach((k, i) => {
+              const r = state.deepDiveResult[k.code];
+              if (!r) return;
+              out.push(PDF.card(`${PDF.title(pad2(i + 1), k.kr, k.en)}${W5H1.map(([key, label]) => PDF.kv(label, r[key])).join("")}`));
+            });
+          }
+
+          if (state.steepResult) {
+            out.push(PDF.heading("03", "과거 · 현재 · 미래 분석", "Past · Present · Future / STEEP"));
+            state.steepResult.forEach((item, i) => {
+              ["past", "present", "future"].forEach(t => {
+                const slot = item.timeline[t];
+                const steep = Object.entries(slot.steep || {}).map(([k, v]) =>
+                  PDF.kv(STEEP_LABEL[String(k).toLowerCase()] || String(k).toUpperCase(), v)).join("");
+                out.push(PDF.card(`${PDF.title(pad2(i + 1), item.keyword, TIMELINE_LABEL[t])}${PDF.para(slot.desc)}
+                  <div style="background:#f8fafc;border-radius:10px;padding:4px 14px 12px;margin-top:12px;">${steep}</div>`));
+              });
+            });
+          }
+
+          if (state.futureScenario) {
+            out.push(PDF.heading("04", `${state.targetYear}년 융합 미래 트렌드`, "Future Trends"));
+            state.futureScenario.trends.forEach((t, i) => {
+              const on = state.selectedScenarioIndex === i;
+              out.push(PDF.card(`${PDF.title(pad2(i + 1), t.futureTrendKeyword, "", on ? "선택" : "")}
+                ${PDF.kv("트렌드 특성", t.characteristics)}${PDF.kv("사용자 행동 시나리오", t.userScenario)}`, on));
+            });
+          }
+
+          if (state.reasoningResult) {
+            out.push(PDF.heading("05", "통합 인사이트", "Integrated Insights"));
+            if (state.researchTopic) out.push(PDF.card(PDF.kv("추론 과제", state.researchTopic)));
+            state.reasoningResult.insights.forEach((x, i) => {
+              const on = state.selectedInsightIndex === i;
+              out.push(PDF.card(`${PDF.title(pad2(i + 1), x.headline, "", on ? "선택" : "")}${PDF.para(x.description)}`, on));
+            });
+          }
+
+          if (state.concepts.length) {
+            out.push(PDF.heading("06", "디자인 컨셉", "Design Concepts"));
+            state.concepts.forEach((c, i) => {
+              const on = state.benchmarkFor === i || (state.benchmarkFor < 0 && state.selectedConceptIndex === i);
+              const feats = (c.keyFeatures || []).map(f =>
+                `<div style="margin-top:8px;"><div style="font-size:16px;font-weight:700;">· ${esc(f.title)}</div>${f.desc ? `<div style="font-size:15px;line-height:1.7;color:#334155;padding-left:12px;">${esc(f.desc)}</div>` : ""}</div>`).join("");
+              out.push(PDF.card(`${PDF.title(pad2(i + 1), c.title, c.perspective ? `${c.perspective} 관점` : "", on ? "선택" : "")}
+                ${PDF.kv("타겟 페르소나", c.persona)}${PDF.kv("개요", c.description)}${PDF.kv("핵심 가치", c.coreValue)}
+                ${feats ? `<div style="margin-top:10px;"><div style="font-size:14px;font-weight:700;color:#64748b;">주요 기능</div>${feats}</div>` : ""}`, on));
+            });
+          }
+
+          if (state.benchmarkResult) {
+            const b = state.benchmarkResult;
+            out.push(PDF.heading("07", "케이스스터디", "Case Study"));
+            out.push(PDF.card(PDF.kv("선택한 컨셉", b.selectedConceptName)));
+            b.cases.forEach((c, i) => {
+              out.push(PDF.card(`${PDF.title(pad2(i + 1), c.caseName, c.industry)}
+                ${PDF.kv("사례 특징", c.caseCharacteristics)}${PDF.kv("성공 요인", c.successFactor)}
+                ${PDF.kv("비즈니스 결과", c.businessResult)}${PDF.kv("가설 확장성", c.expansionFactor)}`));
+            });
+          }
+
+          if (state.qaHistory.length) {
+            out.push(PDF.heading("08", "AI 질문과 답변", "Q&A"));
+            state.qaHistory.forEach((h, i) => out.push(PDF.card(`${PDF.title(`Q${i + 1}`, h.q)}${PDF.para(h.a)}`)));
+          }
+
+          return out.join("");
+        }
+      };
+
+      async function exportPdf() {
+        const h2c = window.html2canvas;
+        const JsPDF = window.jspdf && window.jspdf.jsPDF;
+        if (!h2c || !JsPDF) {
+          await window.copyReport();
+          throw new Error("PDF 모듈을 불러오지 못했습니다. 대신 리포트를 클립보드에 복사했습니다.");
+        }
+
+        const holder = document.createElement("div");
+        holder.setAttribute("aria-hidden", "true");
+        holder.style.cssText = `position:absolute;left:-10000px;top:0;width:${PDF.W}px;background:#ffffff;`;
+        holder.innerHTML = PDF.document();
+        document.body.appendChild(holder);
+
+        try {
+          if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) { /* 무시 */ } }
+
+          const pdf = new JsPDF({ unit: "pt", format: "a4" });
+          const pw = pdf.internal.pageSize.getWidth();
+          const ph = pdf.internal.pageSize.getHeight();
+          const M = 34;
+          const maxW = pw - M * 2;
+          let y = M;
+          let placed = 0;
+
+          const blocks = [];
+          for (const b of Array.from(holder.children)) {
+            const canvas = await h2c(b, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+            if (!canvas.width || !canvas.height) continue;
+            blocks.push({ canvas, head: !!b.querySelector("[data-pdf-head]") });
+          }
+
+          for (let bi = 0; bi < blocks.length; bi++) {
+            const canvas = blocks[bi].canvas;
+            const ratio = maxW / canvas.width;           // canvas px → pt
+            const fullH = canvas.height * ratio;
+
+            // 섹션 제목은 다음 내용과 같은 페이지에 붙임 (제목만 페이지 끝에 남지 않게)
+            if (blocks[bi].head && placed) {
+              const next = blocks[bi + 1];
+              const nh = next ? next.canvas.height * (maxW / next.canvas.width) : 0;
+              const nextH = nh > ph - M * 2 ? 180 : nh;   // 다음 블록이 페이지보다 길면 첫 부분만 함께 두면 됨
+              if (y + fullH + nextH > ph - M) { pdf.addPage(); y = M; }
+            }
+
+            if (fullH <= ph - M * 2) {
+              if (placed && y + fullH > ph - M) { pdf.addPage(); y = M; }
+              pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", M, y, maxW, fullH);
+              y += fullH + 6;
+            } else {
+              // 한 페이지보다 긴 블록: 남은 공간부터 채우고 페이지를 넘겨 이어 붙임
+              if (placed && (ph - M - y) < 120) { pdf.addPage(); y = M; }
+              let srcY = 0;
+              while (srcY < canvas.height) {
+                const roomPt = ph - M - y;
+                const slicePx = Math.min(canvas.height - srcY, Math.floor(roomPt / ratio));
+                const part = document.createElement("canvas");
+                part.width = canvas.width; part.height = slicePx;
+                part.getContext("2d").drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, canvas.width, slicePx);
+                pdf.addImage(part.toDataURL("image/jpeg", 0.92), "JPEG", M, y, maxW, slicePx * ratio);
+                srcY += slicePx;
+                y += slicePx * ratio;
+                if (srcY < canvas.height) { pdf.addPage(); y = M; }
+              }
+              y += 6;
+            }
+            placed += 1;
+          }
+          if (!placed) throw new Error("리포트에 담을 내용이 없습니다.");
+          const name = (state.researchTopic || state.step1Keywords.map(k => k.kr).join("+") || "무제").replace(/[\\/:*?"<>|]/g, "").slice(0, 24);
+          pdf.save(`트렌드-인사이트-리포트-${name}.pdf`);
+          return true;
+        } finally {
+          if (holder.parentNode) holder.parentNode.removeChild(holder);
+        }
       }
 
       /* =========================================================
@@ -1415,10 +1643,16 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
         const PERSPECTIVES = [["General", "종합 관점"], ["Humanities", "인문 관점"], ["Tech", "기술 관점"], ["Business", "비즈니스 관점"]];
         const cards = state.concepts.map((c, i) => {
           const cv = esc(c.coreValue).replace(/(Who:|Purpose:|Service:)/g, '<span class="text-blue-700 font-bold">$1</span>');
+          const on = state.selectedConceptIndex === i;
           return `<article class="animate-fade-in">
             ${c.persona ? `<p class="t-small text-indigo-700 font-bold mb-3 px-1 prose-ko">${esc(c.persona)}</p>` : ""}
-            <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200">
-              <h3 class="t-h1 text-slate-900 mb-6 flex items-start gap-3"><span class="mt-0.5">${numBadge(i + 1)}</span><span class="min-w-0">${esc(c.title)}</span></h3>
+            <div class="rounded-[2rem] p-6 shadow-sm border-2 transition-all ${on ? "border-blue-600 bg-blue-50/50" : "border-slate-200 bg-white"}">
+              <div class="flex items-center justify-between gap-3 mb-4">
+                <span class="flex items-center gap-2">${numBadge(i + 1)}<span class="t-label text-blue-700">CONCEPT</span></span>
+                <button type="button" aria-pressed="${on}" onclick="setState({selectedConceptIndex:${i}})"
+                  class="px-4 py-2 rounded-full t-meta font-bold flex-shrink-0 transition-all active:scale-95 ${on ? "bg-blue-600 text-white shadow-md" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}">${on ? "선택됨" : "선택"}</button>
+              </div>
+              <h3 class="t-h1 text-slate-900 mb-6">${esc(c.title)}</h3>
               <div class="space-y-7">
                 ${c.description ? `<div><h4 class="t-label text-slate-500 mb-2">개요</h4><p class="t-body text-slate-700 prose-ko">${esc(c.description)}</p></div>` : ""}
                 <div><h4 class="t-label text-slate-500 mb-2">핵심 가치</h4><p class="t-body font-medium text-slate-800 prose-ko">${cv}</p></div>
@@ -1427,13 +1661,11 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
                     <p class="t-h3 text-slate-900">${esc(f.title)}</p>
                     ${f.desc ? `<p class="t-small text-slate-600 prose-ko">${esc(f.desc)}</p>` : ""}</li>`).join("")}</ul></div>` : ""}
               </div>
-              <button type="button" onclick="Actions.runBenchmark(${i})"
-                class="w-full mt-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold t-small flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
-                <i data-lucide="search" class="w-5 h-5"></i> 이 컨셉으로 사례 찾기</button>
             </div>
           </article>`;
         }).join("");
 
+        const pickedConcept = state.selectedConceptIndex >= 0 && !!state.concepts[state.selectedConceptIndex];
         return `<div class="pt-24 px-4 dock-space animate-fade-in">
           ${header("디자인 컨셉", 7)}
           <div class="space-y-10">${cards}</div>
@@ -1447,6 +1679,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           </section>
           ${instructionBox("concepts", "예: 타겟을 더 좁혀서 다시 제안")}
           ${qaBox("qa-concepts", "concepts")}
+          ${dock(primaryBtn(pickedConcept ? "선택한 컨셉으로 케이스 스터디 진행" : "컨셉을 하나 선택해 주세요", "Actions.goBenchmark()", !pickedConcept))}
         </div>`;
       }
 
@@ -1479,6 +1712,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           <div class="space-y-10">${blocks}</div>
           ${instructionBox("benchmark", "예: 이 사례를 유럽의 서비스 기업으로 바꿔 주세요")}
           ${qaBox("qa-benchmark", "benchmarkResult")}
+          ${dock(primaryBtn("전체 분석 내용을 PDF로 저장하기", "Actions.exportPdf()"))}
         </div>`;
       }
 
