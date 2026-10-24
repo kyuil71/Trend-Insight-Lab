@@ -21,6 +21,8 @@
        충돌(같은 특이도 → 주입 순서에 따라 승자가 바뀌는 문제)을 차단.
        ========================================================== */
     html { -webkit-text-size-adjust: 100%; }
+    /* 맨 위에서 아래로 끌어내려도 새로고침되지 않도록 (당겨서 새로고침 방지) */
+    html, body { overscroll-behavior-y: contain; }
     body {
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
       -webkit-tap-highlight-color: transparent;
@@ -961,8 +963,6 @@ ${insightContext()}`;
               ...invalidateFrom(9),
               selectedConceptIndex: -1
             });
-            // 컨셉마다 사용자 시나리오 스토리보드 1장씩 자동 생성
-            await Actions.makeStoryboards(state.concepts.map((_, i) => i), "concept");
           }
         },
 
@@ -1013,7 +1013,6 @@ ${insightContext()}`;
           setState({ ...cfg.replace(idx, item), ...(affects ? cfg.invalidate() : {}) });
           toast(`${pad2(idx)}번 ${cfg.label} 항목만 수정했습니다. 다른 항목은 그대로 유지됩니다.`, "ok");
           if (key === "scenario") await Actions.makeStoryboards([idx - 1], "scenario");
-          if (key === "concepts") await Actions.makeStoryboards([idx - 1], "concept");
         },
 
         // 인사이트 다중 선택 — 선택이 바뀌면 이전 컨셉 결과는 맞지 않으므로 비움
@@ -1939,6 +1938,11 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           </div>`;
         }
         const loading = sb && sb.imageId && !BOARD_TRIED.has(sb.imageId);
+        if (kind === "concept" && !sb) {
+          return `<button type="button" onclick="Actions.makeStoryboards([${i}],'concept')"
+            class="w-full py-4 rounded-2xl bg-white border-2 border-slate-300 hover:bg-slate-100 text-slate-800 font-bold t-small flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+            <i data-lucide="clapperboard" class="w-5 h-5"></i>스토리보드 만들기</button>`;
+        }
         return `<div>${head}
           <div class="w-full rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 px-5 py-8 text-center">
             <i data-lucide="${loading ? "loader" : "image"}" class="w-9 h-9 text-slate-400 mx-auto mb-3"></i>
