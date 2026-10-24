@@ -273,6 +273,7 @@ Return RAW JSON only:
 - "caption": Korean, ONE complete sentence of 28-45 characters, numbered implicitly (do NOT write the number), ending with -니다. Concrete: who does what, and what the technology does.
 - "visual": English, ONLY setting + action + camera shot + composition (vary shots: wide, medium, close-up, over-the-shoulder, POV). Do not repeat the character description. If a screen/hologram/UI appears, specify its short content (max 12 Korean characters or numbers).
 - Keep strict spatial realism (a person looking at a phone faces the phone).
+- Every "visual" must describe a REAL, PHOTOGRAPHED live-action moment with real people and real places, as if shot on a film set. NEVER use words such as illustration, drawing, cartoon, sketch, comic, anime, vector, flat design, icon, infographic, diagram, 3D render, CGI, clay, watercolor or painting. Show product concepts as real physical devices or real screens inside real environments.
 [TONE] No markdown.`,
 
         "ASK_AI": `You are a Professional Trend Consultant. Answer the user's question based on the provided context.
@@ -619,26 +620,78 @@ Return RAW JSON: { "answer": "..." }
           .then(() => render(false));
       }
 
-      function boardImagePrompt(sb) {
-        const panels = sb.scenes.map((sc, i) =>
-          `Panel ${i + 1} — Visual: ${sc.visual}\n           Caption (render exactly): "${i + 1}. ${sc.caption}"`).join("\n");
-        return `Create ONE single portrait storyboard sheet (aspect ratio 3:4), laid out like a professional film storyboard page.
+      // 장면 설명에 섞여 들어가 일러스트풍을 부르는 단어를 걸러 냄
+      const NON_PHOTO_WORDS = /\b(illustrat\w*|drawing|drawn|cartoon\w*|sketch\w*|comic\w*|anime|manga|vector|flat[- ]design|flat style|icon\w*|infographic\w*|diagram\w*|3d[- ]render\w*|render(ed|ing)?|cgi|clay\w*|claymation|watercolou?r|painting|painted|pixel art|isometric|low[- ]poly|stylized|storybook)\b/gi;
+      const photoOnly = (t) => String(t || "").replace(NON_PHOTO_WORDS, "").replace(/\s{2,}/g, " ").trim();
 
-LAYOUT (follow exactly):
+      const PHOTO_STYLE = "PHOTOREALISTIC LIVE-ACTION PHOTOGRAPHY ONLY: every panel is a real photograph / cinematic film still of real people in real locations, shot on a full-frame cinema camera with a 35mm lens, natural skin texture, real materials, cinematic lighting and shallow depth of field.";
+      const BANNED_STYLE = "STRICTLY FORBIDDEN in any panel: illustration, drawing, cartoon, comic, anime, manga, sketch, line art, vector or flat design, watercolor, painting, 3D render, CGI look, clay or toy style, pixel art, isometric art. If any panel would look illustrated, make it a real photograph instead.";
+
+      function boardImagePrompt(sb, strict) {
+        const panels = sb.scenes.map((sc, i) =>
+          `Panel ${i + 1} — Real photographed scene: ${photoOnly(sc.visual)}\n           Caption (render exactly): "${i + 1}. ${sc.caption}"`).join("\n");
+        return `${PHOTO_STYLE}
+${strict ? "IMPORTANT: a previous attempt came out illustrated. This time every panel MUST look like an unedited real-world photograph.\n" : ""}
+Create ONE single portrait storyboard sheet (aspect ratio 3:4), laid out like a professional live-action film storyboard page made from real photographs.
+
+LAYOUT (follow exactly — identical format for every sheet):
 - Clean off-white paper background with even margins.
 - Top-left: the sheet title in large bold black Korean sans-serif type: "${sb.title}"
 - Below the title: a grid of 8 panels, 2 columns x 4 rows, read left-to-right then top-to-bottom (panel 1 top-left, panel 2 top-right, ... panel 8 bottom-right).
 - Each panel: a photorealistic cinematic film still in landscape ratio, framed by a thick black border.
 - Directly under each panel: a white caption strip with the given Korean caption in bold black sans-serif type, left-aligned, max two lines, starting with the panel number.
 
-CONSISTENT PROTAGONIST in every panel: ${sb.characterFeatures}
-WORLD: ${sb.setting}
-STYLE: photorealistic, natural Korean everyday locations, cinematic lighting and depth of field, subtle translucent holographic UI only where the scene calls for it.
+CONSISTENT PROTAGONIST (a real person) in every panel: ${photoOnly(sb.characterFeatures)}
+WORLD: ${photoOnly(sb.setting)}
+STYLE: photorealistic, natural Korean everyday locations, cinematic lighting and depth of field. Devices and products are real physical objects; screen or hologram UI appears only as subtle translucent light inside the real photo.
 
 PANELS:
 ${panels}
 
-TEXT RULES: Render every Korean caption exactly as written, legible, with no typos or extra characters. Do not add any other text, logos, signatures or watermarks.`;
+TEXT RULES: Render every Korean caption exactly as written, legible, with no typos or extra characters. Do not add any other text, logos, signatures or watermarks.
+
+${BANNED_STYLE}
+FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the same consistent style.`;
+      }
+
+      // 생성된 스토리보드가 실사 사진 형식인지 텍스트 모델로 검사 (판정 실패 시 통과로 처리)
+      async function isPhotoreal(url) {
+        const m = /^data:([^;]+);base64,(.*)$/.exec(url || "");
+        if (!m) return true;
+        const controller = new AbortController();
+        activeController = controller;
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.MODEL_NAME}:generateContent?key=${encodeURIComponent(state.apiKey || "")}`,
+            {
+              method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [
+                  { inlineData: { mimeType: m[1], data: m[2] } },
+                  { text: 'This is a storyboard sheet with 8 panels. Are the panel images photorealistic live-action photographs (real people, real places)? Answer false if ANY panel looks like an illustration, cartoon, comic, sketch, vector/flat art, painting or 3D/CGI render. Return JSON only: {"photoreal": true|false}' }
+                ] }],
+                generationConfig: { responseMimeType: "application/json", temperature: 0 }
+              })
+            });
+          if (!res.ok) return true;
+          const data = await res.json();
+          const text = (((data.candidates || [])[0] || {}).content || {}).parts;
+          const out = parseModelJson((text || []).map(x => x.text || "").join(""));
+          return out.photoreal !== false;
+        } catch (err) {
+          if (err.name === "AbortError") { const e = new Error("__aborted__"); e.aborted = true; throw e; }
+          return true;
+        }
+      }
+
+      // 실사가 아니면 더 강한 지시로 최대 2번 다시 그림
+      async function drawStoryboard(sb) {
+        let url = await callGeminiImage(boardImagePrompt(sb, false));
+        for (let i = 0; i < 2; i++) {
+          if (await isPhotoreal(url)) return url;
+          url = await callGeminiImage(boardImagePrompt(sb, true));
+        }
+        return url;
       }
 
       async function withLoading(msg, fn) {
@@ -992,7 +1045,7 @@ Integrated insight: ${JSON.stringify(insight)}`;
                   setting: raw.setting || `Seoul, Korea, in ${state.targetYear}`,
                   scenes
                 };
-                const url = await callGeminiImage(boardImagePrompt(sb));
+                const url = await drawStoryboard(sb);
                 if (state.projectId !== projectId || !K.list()[idx]) return;
                 const imageId = `${projectId}:${uid()}`;
                 BOARD_IMG[imageId] = url;
