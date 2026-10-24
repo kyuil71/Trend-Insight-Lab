@@ -2169,6 +2169,18 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
       setInterval(() => { try { persist(false); } catch (e) { console.warn("자동 저장 실패", e); } }, CONFIG.AUTOSAVE_MS);
       window.addEventListener("beforeunload", () => { try { persist(false); } catch (e) { /* 무시 */ } });
 
+      /* 전체 화면 사용 안 함 — 이전 버전·홈 화면 바로가기 등 어떤 경로로든
+         전체 화면이 되면 즉시 일반 화면으로 되돌립니다. */
+      function leaveFullscreen() {
+        const fs = document.fullscreenElement || document.webkitFullscreenElement;
+        if (!fs) return;
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        try { const r = exit && exit.call(document); if (r && r.catch) r.catch(() => {}); } catch (e) { /* 무시 */ }
+      }
+      document.addEventListener("fullscreenchange", leaveFullscreen);
+      document.addEventListener("webkitfullscreenchange", leaveFullscreen);
+      leaveFullscreen();
+
       render(true);
     })();
   </script>
