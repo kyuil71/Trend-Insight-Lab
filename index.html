@@ -233,6 +233,7 @@ Return RAW JSON: { "insights": [ { "headline": "...", "description": "..." } ] }
 [TONE] Write in Korean. Profound but clear. No markdown.`,
 
         "CONCEPTS": `You are a Creative Director. Generate 3 design concepts.
+[INSIGHT SYNTHESIS RULE] The user may provide ONE or SEVERAL selected insights. If several are given, EVERY concept must combine ALL of them at once — do not make one concept per insight and do not ignore any. In 'description', state briefly how the selected insights are fused in this concept.
 Return a RAW JSON array of 3 objects:
 [{ "title": "Concept Name", "persona": "Strategic persona description", "description": "About 3 lines summarizing the concept", "coreValue": "Who: ...\\nPurpose: ...\\nService: ...", "keyFeatures": [{ "title": "Feature Title", "desc": "Detailed description" }], "userScenario": "..." }]
 [RULES]
@@ -368,7 +369,7 @@ Return RAW JSON: { "answer": "..." }
           selectedScenarioIndex: -1,
           researchTopic: "",
           reasoningResult: null,
-          selectedInsightIndex: -1,
+          selectedInsights: [],
           perspective: "General",
           concepts: [],
           allGeneratedConcepts: [],
@@ -402,7 +403,7 @@ Return RAW JSON: { "answer": "..." }
         if (stage <= 2) { patch.deepDiveResult = null; }
         if (stage <= 3) { patch.steepResult = null; }
         if (stage <= 5) { patch.futureScenario = null; patch.selectedScenarioIndex = -1; }
-        if (stage <= 7) { patch.reasoningResult = null; patch.selectedInsightIndex = -1; }
+        if (stage <= 7) { patch.reasoningResult = null; patch.selectedInsights = []; }
         if (stage <= 8) { patch.concepts = []; patch.selectedConceptIndex = -1; }
         if (stage <= 9) { patch.benchmarkResult = null; patch.benchmarkFor = -1; if (stage < 9) patch.selectedConceptIndex = -1; }
         return patch;
@@ -799,6 +800,19 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
         return { selectedConceptName: (res && res.selectedConceptName) || fallbackName || "", cases };
       }
 
+      /* 선택한 인사이트(1개 이상)를 컨셉 프롬프트용 문장으로 */
+      function pickedInsights() {
+        const all = (state.reasoningResult && state.reasoningResult.insights) || [];
+        return (state.selectedInsights || []).slice().sort((a, b) => a - b)
+          .map(i => ({ no: i + 1, ins: all[i] })).filter(x => x.ins);
+      }
+      function insightContext() {
+        const list = pickedInsights();
+        if (list.length === 1) return `Integrated insight: ${JSON.stringify(list[0].ins)}`;
+        return `Selected integrated insights (${list.length}) — combine ALL of them in every concept:\n`
+          + list.map(x => `#${x.no}: ${JSON.stringify(x.ins)}`).join("\n");
+      }
+
       /* =========================================================
          9. ACTIONS
          ========================================================= */
@@ -828,6 +842,11 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
           data.selectedYear = validYear(data.selectedYear);
           // 예측 연도는 2028~2035 범위로 보정 (이전 버전에서 2026·2027로 저장된 경우)
           data.targetYear = Math.min(2035, Math.max(2028, parseInt(data.targetYear, 10) || 2030));
+          // 이전 버전(인사이트 1개 선택)으로 저장된 프로젝트 호환
+          if (!Array.isArray(p.data.selectedInsights)) {
+            data.selectedInsights = (typeof data.selectedInsightIndex === "number" && data.selectedInsightIndex >= 0) ? [data.selectedInsightIndex] : [];
+          }
+          delete data.selectedInsightIndex;
           setState({ ...data, isAnalyzing: false, errorMsg: null, step: lastCompletedStep(data) });
           toast("프로젝트를 열었습니다.", "ok");
         },
@@ -917,19 +936,20 @@ Chosen future trend: ${JSON.stringify(picked)}`;
             () => callGemini(PROMPTS["REASONING"], prompt));
           if (res) {
             drafts["reasoning-instruction"] = "";
-            setState({ researchTopic: topic, reasoningResult: normInsights(res), step: 7, selectedInsightIndex: -1, ...invalidateFrom(8) });
+            setState({ researchTopic: topic, reasoningResult: normInsights(res), step: 7, selectedInsights: [], ...invalidateFrom(8) });
           }
         },
 
         async runIdeation(instruction) {
-          const insight = state.reasoningResult.insights[state.selectedInsightIndex];
-          if (!insight) { setState({ errorMsg: "인사이트를 먼저 선택해 주세요." }); return; }
+          const picks = pickedInsights();
+          if (!picks.length) { setState({ errorMsg: "인사이트를 하나 이상 선택해 주세요." }); return; }
           let prompt = `Task: ${state.researchTopic}
 Target year: ${state.targetYear}
 Perspective: ${state.perspective}
-Integrated insight: ${JSON.stringify(insight)}`;
+${insightContext()}`;
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
-          const res = await withLoading(instruction ? "컨셉을 수정하는 중" : "디자인 컨셉을 도출하는 중",
+          const res = await withLoading(instruction ? "컨셉을 수정하는 중"
+            : picks.length > 1 ? `선택한 인사이트 ${picks.length}개를 종합해 디자인 컨셉을 도출하는 중` : "디자인 컨셉을 도출하는 중",
             () => callGemini(PROMPTS["CONCEPTS"], prompt));
           if (res) {
             drafts["ideation-instruction"] = "";
@@ -994,6 +1014,14 @@ Integrated insight: ${JSON.stringify(insight)}`;
           toast(`${pad2(idx)}번 ${cfg.label} 항목만 수정했습니다. 다른 항목은 그대로 유지됩니다.`, "ok");
           if (key === "scenario") await Actions.makeStoryboards([idx - 1], "scenario");
           if (key === "concepts") await Actions.makeStoryboards([idx - 1], "concept");
+        },
+
+        // 인사이트 다중 선택 — 선택이 바뀌면 이전 컨셉 결과는 맞지 않으므로 비움
+        toggleInsight(i) {
+          const cur = state.selectedInsights || [];
+          const next = cur.includes(i) ? cur.filter(x => x !== i) : [...cur, i].sort((a, b) => a - b);
+          if (state.concepts.length && !window.confirm("인사이트 선택을 바꾸면 지금의 디자인 컨셉과 케이스스터디 결과가 지워집니다. 계속할까요?")) return;
+          setState({ selectedInsights: next, ...(state.concepts.length ? invalidateFrom(8) : {}) });
         },
 
         // 컨셉 단계 하단 버튼 — 같은 컨셉의 결과가 이미 있으면 다시 만들지 않고 보여 줌
@@ -1205,7 +1233,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           items: () => numbered(state.reasoningResult ? state.reasoningResult.insights : [], x => x.headline),
           downstreamAll: () => state.concepts.length > 0,
           downstreamText: "전체를 다시 생성하면 디자인 컨셉 이후 단계 결과가 지워집니다.",
-          downstreamOne: (idx) => state.selectedInsightIndex === idx - 1 && state.concepts.length > 0,
+          downstreamOne: (idx) => (state.selectedInsights || []).includes(idx - 1) && state.concepts.length > 0,
           invalidate: () => invalidateFrom(8),
           regenerateAll: async (ins) => { await Actions.runReasoning(ins || "앞의 결과와 다른 관점으로 다시 추론해 주세요."); return true; },
           system: () => PROMPTS["REASONING"],
@@ -1229,9 +1257,8 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           regenerateAll: async (ins) => { await Actions.runIdeation(ins || "앞의 결과와 다른 컨셉으로 다시 제안해 주세요."); return true; },
           system: () => PROMPTS["CONCEPTS"],
           onePrompt: (idx, ins) => {
-            const insight = state.reasoningResult.insights[state.selectedInsightIndex];
-            const slim = state.concepts.map(({ perspective, ...rest }) => rest);
-            return `Task: ${state.researchTopic}\nPerspective: ${state.perspective}\nIntegrated insight: ${JSON.stringify(insight)}`
+            const slim = state.concepts.map(({ perspective, storyboard, ...rest }) => rest);
+            return `Task: ${state.researchTopic}\nTarget year: ${state.targetYear}\nPerspective: ${state.perspective}\n${insightContext()}`
               + partialBlock(numberedJson(slim), idx, ins,
                 `[ { "title": "...", "persona": "...", "description": "...", "coreValue": "Who: ...\\nPurpose: ...\\nService: ...", "keyFeatures": [ { "title": "...", "desc": "..." } ], "userScenario": "..." } ]`);
           },
@@ -1515,7 +1542,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
             out.push(PDF.heading("05", "통합 인사이트", "Integrated Insights"));
             if (state.researchTopic) out.push(PDF.card(PDF.kv("추론 과제", state.researchTopic)));
             state.reasoningResult.insights.forEach((x, i) => {
-              const on = state.selectedInsightIndex === i;
+              const on = (state.selectedInsights || []).includes(i);
               out.push(PDF.card(`${PDF.title(pad2(i + 1), x.headline, "", on ? "선택" : "")}${PDF.para(x.description)}`, on));
             });
           }
@@ -1679,7 +1706,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
         if (state.reasoningResult) {
           L.push("[6. 통합 인사이트]");
           state.reasoningResult.insights.forEach((ins, i) => {
-            L.push(`${i + 1}. ${ins.headline}${state.selectedInsightIndex === i ? " (선택됨)" : ""}`, `   ${ins.description}`);
+            L.push(`${i + 1}. ${ins.headline}${(state.selectedInsights || []).includes(i) ? " (선택됨)" : ""}`, `   ${ins.description}`);
           });
           L.push("");
         }
@@ -1975,11 +2002,11 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
 
       function viewReasoning() {
         const cards = state.reasoningResult.insights.map((ins, i) => {
-          const on = state.selectedInsightIndex === i;
+          const on = (state.selectedInsights || []).includes(i);
           return `<article class="bg-white p-6 rounded-[2rem] shadow-sm border-2 transition-all ${on ? "border-blue-600 bg-blue-50/50" : "border-slate-200"}">
             <div class="flex items-center justify-between gap-3 mb-4">
               <span class="flex items-center gap-2">${numBadge(i + 1)}<span class="t-label text-blue-700">INSIGHT</span></span>
-              <button type="button" aria-pressed="${on}" onclick="setState({selectedInsightIndex:${i}, ...invalidateFrom(8)})"
+              <button type="button" aria-pressed="${on}" onclick="Actions.toggleInsight(${i})"
                 class="px-4 py-2 rounded-full t-meta font-bold flex-shrink-0 transition-all active:scale-95 ${on ? "bg-blue-600 text-white shadow-md" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}">${on ? "선택됨" : "선택"}</button>
             </div>
             <h3 class="t-h3 text-blue-900 mb-3">${esc(ins.headline)}</h3>
@@ -1987,15 +2014,16 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           </article>`;
         }).join("");
 
-        const picked = state.selectedInsightIndex >= 0;
+        const n = (state.selectedInsights || []).length;
         return `<div class="pt-24 px-4 dock-space animate-fade-in">
           ${header("통합 인사이트", 6)}
           <h2 class="t-h1 text-slate-900 mb-2">통합 추론 리포트</h2>
-          <p class="t-small text-slate-500 mb-6">과제: ${esc(state.researchTopic)}</p>
+          <p class="t-small text-slate-500 mb-1">과제: ${esc(state.researchTopic)}</p>
+          <p class="t-small text-slate-500 mb-6">인사이트를 여러 개 선택하면 모두 함께 반영해 디자인 컨셉을 제안합니다.</p>
           <div class="space-y-5">${cards}</div>
           ${instructionBox("reasoning", "예: 소비자 행동 근거를 더 구체적으로")}
           ${qaBox("qa-reasoning", "reasoningResult")}
-          ${dock(primaryBtn(picked ? "디자인 컨셉 제안받기" : "인사이트를 하나 선택해 주세요", "Actions.runIdeation()", !picked))}
+          ${dock(primaryBtn(n > 1 ? `선택한 인사이트 ${n}개로 디자인 컨셉 제안받기` : n === 1 ? "디자인 컨셉 제안받기" : "인사이트를 하나 이상 선택해 주세요", "Actions.runIdeation()", n === 0))}
         </div>`;
       }
 
@@ -2028,8 +2056,14 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
         }).join("");
 
         const pickedConcept = state.selectedConceptIndex >= 0 && !!state.concepts[state.selectedConceptIndex];
+        const usedIns = pickedInsights();
+        const usedLine = usedIns.length ? `<div class="mb-8 p-5 bg-white rounded-[2rem] border-2 border-slate-200">
+            <h3 class="t-label text-blue-700 mb-2">반영한 인사이트 ${usedIns.length}개</h3>
+            <ul class="space-y-1.5">${usedIns.map(x => `<li class="t-small text-slate-800 flex gap-2"><span class="font-bold text-blue-700 tabular-nums">${pad2(x.no)}</span><span>${esc(x.ins.headline)}</span></li>`).join("")}</ul>
+          </div>` : "";
         return `<div class="pt-24 px-4 dock-space animate-fade-in">
           ${header("디자인 컨셉", 7)}
+          ${usedLine}
           <div class="space-y-10">${cards}</div>
           <section class="mt-10">
             <h3 class="t-label text-slate-500 mb-3">관점을 바꿔 다시 제안받기</h3>
