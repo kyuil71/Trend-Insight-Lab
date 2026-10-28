@@ -102,6 +102,7 @@
          ========================================================= */
       const CONFIG = {
         MODEL_NAME: "gemini-flash-latest",
+        MAX_TRENDS: 3,
         // 스토리보드 이미지 모델 — kyuil71/storyboard(AI Storyboard Maker)와 같은 모델
         IMAGE_MODEL: "gemini-nano-banana-2.1",
         BOARD_DB: "trend_lab_storyboards_v1",
@@ -220,6 +221,11 @@ Return a RAW JSON object:
   { "futureTrendKeyword": "Trend 2 Name", "characteristics": "...", "userScenario": "..." }
 ] }
 [RULES] Exactly 2 clearly distinct trends. 'characteristics' explains the essence and novelty. 'userScenario' is a storytelling narrative about core human behaviors. Each about 500-700 Korean characters.
+[BALANCED FUSION RULE — MOST IMPORTANT]
+- EACH of the 2 future trends must be a fusion of ALL the selected trends (2 or 3) at once, with every selected trend contributing a roughly EQUAL weight. Never let one trend dominate or be left out.
+- In 'characteristics', explicitly name every selected trend and explain what each one contributes and how they fuse into something new.
+- In 'userScenario', the behaviors of every selected trend must visibly appear in the story.
+- The 2 future trends differ in the way the same selected trends are combined (different angle or outcome), not in which trends they use.
 [MODIFICATION RULE] If an [INSTRUCTION] is provided, prioritize it as a professional futurist while keeping the required format.
 [TONE] Write in Korean. Visionary and detailed. No markdown.`,
 
@@ -729,7 +735,7 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
 
       function normSteep(res, keywords) {
         let arr = res;
-        if (!Array.isArray(arr)) arr = (res && (res.steepResult || res.results || res.data)) || [];
+        if (!Array.isArray(arr)) arr = (res && res.timeline) ? [res] : ((res && (res.steepResult || res.results || res.data)) || []);
         if (!Array.isArray(arr)) arr = [];
         const emptySteep = () => ({ social: NO_DATA, tech: NO_DATA, econ: NO_DATA, env: NO_DATA, policy: NO_DATA });
         const normSlot = (slot) => {
@@ -815,6 +821,17 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
           + list.map(x => `#${x.no}: ${JSON.stringify(x.ins)}`).join("\n");
       }
 
+      /* 과거·현재·미래(STEEP) — 키워드마다 따로 분석해 응답 길이 초과를 막음 */
+      async function steepEach(kws, ins) {
+        const out = [];
+        for (const k of kws) {
+          let p = `Keywords:\n- ${k.kr}: ${k.summary}\nReturn a JSON array with exactly ONE element for this keyword.`;
+          if (ins) p += `\n[INSTRUCTION]: ${ins}`;
+          out.push(normSteep(await callGemini(PROMPTS["STEEP"], p), [k])[0]);
+        }
+        return out;
+      }
+
       /* =========================================================
          9. ACTIONS
          ========================================================= */
@@ -885,8 +902,8 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
           if (!item) return;
           let list = [...state.step1Keywords];
           if (list.some(i => i.code === code)) list = list.filter(i => i.code !== code);
-          else if (list.length < 2) list.push(item);
-          else { toast("트렌드는 최대 2개까지 선택할 수 있습니다.", "warn"); return; }
+          else if (list.length < CONFIG.MAX_TRENDS) list.push(item);
+          else { toast(`트렌드는 최대 ${CONFIG.MAX_TRENDS}개까지 선택할 수 있습니다.`, "warn"); return; }
           setState({ step1Keywords: list, expanded: { ...state.expanded, [code]: true }, ...invalidateFrom(2) });
         },
 
@@ -906,9 +923,8 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
         async runSteep() {
           const kws = state.step1Keywords;
           if (!kws.length) return;
-          const res = await withLoading("선택한 키워드의 과거 현재 미래를 분석하고 있습니다", () =>
-            callGemini(PROMPTS["STEEP"], `Keywords:\n${kws.map(k => `- ${k.kr}: ${k.summary}`).join("\n")}`));
-          if (res) setState({ steepResult: normSteep(res, kws), step: 3, ...invalidateFrom(5) });
+          const res = await withLoading("선택한 키워드의 과거 현재 미래를 분석하고 있습니다", () => steepEach(kws, ""));
+          if (res) setState({ steepResult: res, step: 3, ...invalidateFrom(5) });
         },
 
         async runScenario(instruction) {
@@ -1171,11 +1187,8 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
       }
 
       async function regenSteep(ins) {
-        const kws = state.step1Keywords;
-        let p = `Keywords:\n${kws.map(k => `- ${k.kr}: ${k.summary}`).join("\n")}`;
-        if (ins) p += `\n[INSTRUCTION]: ${ins}`;
-        const res = await withLoading("선택한 키워드의 과거 현재 미래를 다시 분석하고 있습니다", () => callGemini(PROMPTS["STEEP"], p));
-        if (res) setState({ steepResult: normSteep(res, kws) });
+        const res = await withLoading("선택한 키워드의 과거 현재 미래를 다시 분석하고 있습니다", () => steepEach(state.step1Keywords, ins));
+        if (res) setState({ steepResult: res });
         return !!res;
       }
 
@@ -1836,7 +1849,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
         const n = state.step1Keywords.length;
         return `<div class="pt-24 px-4 dock-space animate-fade-in">
           ${header("트렌드 선택", 0)}
-          <h2 class="t-h1 text-slate-900 mb-2">분석할 트렌드를<br/>최대 2개까지 고르세요</h2>
+          <h2 class="t-h1 text-slate-900 mb-2">분석할 트렌드를<br/>최대 ${CONFIG.MAX_TRENDS}개까지 고르세요</h2>
           <p class="t-small text-slate-500 mb-6">제목을 누르면 설명이 펼쳐집니다.</p>
           <div class="flex gap-2 mb-6" role="group" aria-label="연도 선택">
             ${TREND_YEARS.map(y => `<button type="button" onclick="setState({selectedYear:'${y}'})" aria-pressed="${year === y}"
