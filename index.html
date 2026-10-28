@@ -102,7 +102,7 @@
          ========================================================= */
       const CONFIG = {
         MODEL_NAME: "gemini-flash-latest",
-        MAX_TRENDS: 3,
+        MAX_TRENDS: 2,
         // 스토리보드 이미지 모델 — kyuil71/storyboard(AI Storyboard Maker)와 같은 모델
         IMAGE_MODEL: "gemini-nano-banana-2.1",
         BOARD_DB: "trend_lab_storyboards_v1",
@@ -222,7 +222,7 @@ Return a RAW JSON object:
 ] }
 [RULES] Exactly 2 clearly distinct trends. 'characteristics' explains the essence and novelty. 'userScenario' is a storytelling narrative about core human behaviors. Each about 500-700 Korean characters.
 [BALANCED FUSION RULE — MOST IMPORTANT]
-- EACH of the 2 future trends must be a fusion of ALL the selected trends (2 or 3) at once, with every selected trend contributing a roughly EQUAL weight. Never let one trend dominate or be left out.
+- EACH of the 2 future trends must be a fusion of ALL the selected trends at once, with every selected trend contributing a roughly EQUAL weight. Never let one trend dominate or be left out.
 - In 'characteristics', explicitly name every selected trend and explain what each one contributes and how they fuse into something new.
 - In 'userScenario', the behaviors of every selected trend must visibly appear in the story.
 - The 2 future trends differ in the way the same selected trends are combined (different angle or outcome), not in which trends they use.
