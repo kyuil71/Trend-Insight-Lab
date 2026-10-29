@@ -106,6 +106,7 @@
         // 스토리보드 이미지 모델 — kyuil71/storyboard(AI Storyboard Maker)와 같은 모델
         IMAGE_MODEL: "gemini-nano-banana-2.1",
         BOARD_DB: "trend_lab_storyboards_v1",
+        PROJECT_DB: "trend_lab_projects_db_v1",
         SESSION_KEY_API: "trendInsightApiKey_v18",
         PROJECTS_KEY: "trend_lab_projects_v16",
         MAX_PROJECTS: 5,
@@ -444,47 +445,110 @@ Return RAW JSON: { "answer": "..." }
       /* =========================================================
          5. 저장소 — 슬롯 방식(최대 5개) + 예외/용량 처리
          ========================================================= */
+      /* 프로젝트 저장소 — IndexedDB 사용
+         GitHub Pages의 모든 도구가 같은 주소(kyuil71.github.io)를 써서 localStorage(약 5MB)를
+         함께 나눠 쓰기 때문에, 용량이 훨씬 큰 IndexedDB에 저장합니다.
+         화면은 메모리 목록(cache)을 쓰고, 기록은 뒤에서 IndexedDB에 씁니다.
+         IndexedDB를 쓸 수 없는 브라우저에서만 예전 방식(localStorage)으로 저장합니다. */
       const Store = {
-        list() {
+        cache: [],
+        db: null,
+        mode: "idb",
+        failed: false,
+        lsList() {
           try {
             const raw = localStorage.getItem(CONFIG.PROJECTS_KEY);
             const arr = raw ? JSON.parse(raw) : [];
             return Array.isArray(arr) ? arr : [];
-          } catch (e) {
-            console.warn("저장 목록을 읽지 못했습니다.", e);
-            return [];
-          }
+          } catch (e) { return []; }
         },
-        _write(list) {
+        lsWrite(list) {
+          try { localStorage.setItem(CONFIG.PROJECTS_KEY, JSON.stringify(list)); return true; }
+          catch (e) { return false; }
+        },
+        openDB() {
+          return new Promise((resolve, reject) => {
+            try {
+              const req = indexedDB.open(CONFIG.PROJECT_DB, 1);
+              req.onupgradeneeded = () => req.result.createObjectStore("projects", { keyPath: "id" });
+              req.onsuccess = () => resolve(req.result);
+              req.onerror = () => reject(req.error);
+              req.onblocked = () => reject(new Error("blocked"));
+            } catch (e) { reject(e); }
+          });
+        },
+        tx(mode, fn) {
+          return new Promise((resolve, reject) => {
+            const t = this.db.transaction("projects", mode);
+            const r = fn(t.objectStore("projects"));
+            t.oncomplete = () => resolve(r && r.result);
+            t.onerror = () => reject(t.error);
+            t.onabort = () => reject(t.error || new Error("abort"));
+          });
+        },
+        sortCache() { this.cache.sort((x, y) => (y.savedAt || 0) - (x.savedAt || 0)); },
+        // 시작할 때 한 번: 저장소를 열고, 예전 localStorage 프로젝트를 옮긴 뒤 비워 공간을 돌려줌
+        async init() {
           try {
-            localStorage.setItem(CONFIG.PROJECTS_KEY, JSON.stringify(list));
-            return true;
+            this.db = await this.openDB();
+            const rows = await this.tx("readonly", st => st.getAll());
+            this.cache = Array.isArray(rows) ? rows : [];
+            const legacy = this.lsList();
+            if (legacy.length) {
+              const known = new Set(this.cache.map(p => p.id));
+              const add = legacy.filter(p => p && p.id && !known.has(p.id));
+              if (add.length) {
+                await this.tx("readwrite", st => { add.forEach(p => st.put(p)); });
+                this.cache.push(...add);
+              }
+              try { localStorage.removeItem(CONFIG.PROJECTS_KEY); } catch (e) { /* 무시 */ }
+            }
+            this.mode = "idb";
           } catch (e) {
-            return false;
+            console.warn("IndexedDB를 쓸 수 없어 localStorage로 저장합니다.", e);
+            this.mode = "ls";
+            this.cache = this.lsList();
           }
+          this.sortCache();
+          this.trim();
         },
+        // 최대 개수를 넘는 오래된 프로젝트는 스토리보드 이미지와 함께 정리
+        trim() {
+          if (this.cache.length <= CONFIG.MAX_PROJECTS) return;
+          const drop = this.cache.slice(CONFIG.MAX_PROJECTS);
+          this.cache = this.cache.slice(0, CONFIG.MAX_PROJECTS);
+          drop.forEach(p => {
+            if (this.mode === "idb") this.tx("readwrite", st => st.delete(p.id)).catch(() => {});
+            BoardDB.removePrefix(`${p.id}:`).catch(() => {});
+          });
+          if (this.mode === "ls") this.lsWrite(this.cache);
+        },
+        list() { return this.cache; },
         save(snapshot, meta) {
-          let list = Store.list().filter(p => p.id !== meta.id);
-          list.unshift({ id: meta.id, title: meta.title, savedAt: Date.now(), data: snapshot });
-          if (list.length > CONFIG.MAX_PROJECTS) list = list.slice(0, CONFIG.MAX_PROJECTS);
-
-          if (Store._write(list)) return { ok: true };
-
-          // 1차 실패: Q&A 기록을 최근 5건으로 줄여 재시도
-          const trimmed = list.map((p, i) => i === 0
-            ? { ...p, data: { ...p.data, qaHistory: (p.data.qaHistory || []).slice(-5) } }
-            : p);
-          if (Store._write(trimmed)) return { ok: true, pruned: "qa" };
-
-          // 2차 실패: 가장 오래된 프로젝트를 버리고 재시도
-          const reduced = trimmed.slice(0, Math.max(1, trimmed.length - 1));
-          if (Store._write(reduced)) return { ok: true, pruned: "oldest" };
-
-          return { ok: false };
+          const row = { id: meta.id, title: meta.title, savedAt: Date.now(), data: snapshot };
+          this.cache = [row, ...this.cache.filter(p => p.id !== meta.id)];
+          this.trim();
+          if (this.mode === "ls") return { ok: this.lsWrite(this.cache) };
+          if (!this.db) return { ok: true };   // 시작 직후 init 전 — 다음 자동 저장 때 기록됨
+          this.tx("readwrite", st => st.put(row)).then(() => {
+            if (this.failed) { this.failed = false; toast("저장이 다시 정상적으로 되고 있습니다.", "ok"); }
+          }).catch(err => {
+            console.error("프로젝트 저장 실패", err);
+            lastSaved = "";   // 다음 자동 저장 때 다시 시도
+            if (!this.failed) {
+              this.failed = true;
+              toast(err && err.name === "QuotaExceededError"
+                ? "기기의 저장 공간이 부족해 저장하지 못했습니다. 휴대폰 저장 공간을 확인해 주세요."
+                : "진행 상태를 저장하지 못했습니다. 잠시 후 자동으로 다시 시도합니다.", "error");
+            }
+          });
+          return { ok: true };
         },
         remove(id) {
-          const list = Store.list().filter(p => p.id !== id);
-          return Store._write(list);
+          this.cache = this.cache.filter(p => p.id !== id);
+          if (this.mode === "ls") return this.lsWrite(this.cache);
+          if (this.db) this.tx("readwrite", st => st.delete(id)).catch(() => {});
+          return true;
         }
       };
 
@@ -1504,12 +1568,8 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
         const serialized = JSON.stringify(snap);
         if (!force && serialized === lastSaved) return "skip";
         const r = Store.save(snap, { id: state.projectId, title: projectTitle() });
-        if (r.ok) {
-          lastSaved = serialized;
-          if (r.pruned === "oldest" && !quotaWarned) { quotaWarned = true; toast("공간 확보를 위해 가장 오래된 프로젝트를 정리했습니다.", "warn"); }
-          return "ok";
-        }
-        if (!quotaWarned) { quotaWarned = true; toast("저장 공간이 부족해 자동 저장이 중단되었습니다.", "error"); }
+        if (r.ok) { lastSaved = serialized; return "ok"; }
+        if (!quotaWarned) { quotaWarned = true; toast("저장 공간이 부족해 저장하지 못했습니다.", "error"); }
         return "full";
       }
 
@@ -2452,6 +2512,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
       leaveFullscreen();
 
       render(true);
+      Store.init().then(() => { if (state.step === 0) render(false); });
     })();
   </script>
 </body>
