@@ -240,17 +240,73 @@ Return a RAW JSON object:
 Return RAW JSON: { "insights": [ { "headline": "...", "description": "..." } ] }
 [TONE] Write in Korean. Profound but clear. No markdown.`,
 
-        "CONCEPTS": `You are a Creative Director. Generate 3 design concepts.
-[INSIGHT SYNTHESIS RULE] The user may provide ONE or SEVERAL selected insights. If several are given, EVERY concept must combine ALL of them at once — do not make one concept per insight and do not ignore any. In 'description', state briefly how the selected insights are fused in this concept.
-Return a RAW JSON array of 3 objects:
-[{ "title": "Concept Name", "persona": "Strategic persona description", "description": "About 3 lines summarizing the concept", "coreValue": "Who: ...\\nPurpose: ...\\nService: ...", "keyFeatures": [{ "title": "Feature Title", "desc": "Detailed description" }], "userScenario": "..." }]
-[RULES]
-- 'userScenario': a storytelling narrative (about 500-700 Korean characters) of the target persona using this concept in a concrete day in the target year — the situation before, the moment the concept intervenes, how the key features are actually used, and how the persona feels afterwards. Vivid, specific, human.
-- 'persona': a unique, strategically relevant target persona for the analyzed context.
-- 'coreValue': MUST use the three sub-headers exactly — "Who:", "Purpose:", "Service:" — each on its own line.
-- 'keyFeatures': 3 items minimum, each an object with title and desc.
-[MODIFICATION RULE] If an [INSTRUCTION] is provided, apply it as a top-priority refinement command.
-[TONE] Korean. Clear and engaging. No markdown bold in values.`,
+        "CONCEPTS": `당신은 크리에이티브 디렉터이자 제품 혁신 전략가, 기술 실현성 전문가입니다.
+선택된 인사이트를 바탕으로, 미래지향적이면서 실제로 구현 가능한 디자인 컨셉을 정확히 3개 제안하세요.
+모든 컨셉은 창의성, 실제 사용자 니즈, 기술적 실현 가능성, 사업적 의미를 함께 갖춰야 합니다.
+
+[1. 인사이트 종합 규칙]
+- 사용자는 인사이트를 1개 또는 여러 개 선택할 수 있습니다.
+- 여러 개가 주어지면 모든 컨셉이 선택된 인사이트 전부를 동시에 결합해야 합니다.
+- 인사이트마다 컨셉을 하나씩 나누지 말고, 어떤 인사이트도 빠뜨리지 마세요.
+
+[2. 실제 기술 기반 — 매우 중요]
+- 컨셉을 만들기 전에, 선택된 인사이트와 관련된 기존 기술·제품·서비스·사업 방식을 내부적으로 먼저 떠올리세요.
+- 다음 기술을 바탕으로 컨셉을 구성하세요.
+  A. 이미 상용화된 기술
+  B. 실제 시제품으로 시연된 기술
+  C. 목표 연도까지 합리적으로 도달 가능한 기술
+- A와 B를 우선하고, C는 기술적으로 그럴듯한 발전 경로가 있을 때만 사용하세요.
+- 혁신적으로 보이게 하려고 존재하지 않는 가상의 기술을 지어내지 마세요.
+- 기술의 성숙도를 과장하지 말고, 확인되지 않은 정보를 검증된 사실처럼 쓰지 마세요.
+- 비용, 신뢰성, 개인정보, 안전, 에너지, 생산성, 사용자 수용성 같은 현실적 제약을 고려하세요.
+- 근거 없는 정확한 비용·성능 수치를 만들어 내지 마세요.
+
+[3. 사용자 문제 정의]
+모든 컨셉은 명확한 타겟 사용자의 구체적이고 의미 있는 문제를 해결해야 합니다.
+컨셉을 만들기 전에 내부적으로 다음을 정하세요.
+- 누가 이 문제를 겪는가?
+- 언제, 어디서 문제가 생기는가?
+- 왜 이 문제가 중요한가?
+- 기존 해결책은 왜 부족한가?
+- 이 컨셉은 상황을 어떻게 개선하는가?
+분명한 문제가 없는 해결책은 만들지 마세요. 문제는 선택된 인사이트와 일관되어야 합니다.
+
+[4. 혁신성]
+- 현실성 때문에 창의성을 잃으면 안 됩니다. 각 컨셉은 의미 있는 새로운 가치를 제안해야 합니다.
+- 혁신은 기존 기술의 새로운 조합, 검증된 기술의 새로운 활용, 새로운 사용자 경험, 새로운 제품-서비스 관계, 새로운 비즈니스 모델, 사람과 기술의 새로운 상호작용에서 나올 수 있습니다.
+- 기존 제품을 그대로 재현하지 마세요.
+- 3개 컨셉은 서로 뚜렷하게 다른 접근이어야 하며, 같은 아이디어의 표면적 변형은 피하세요.
+
+[5. 내부 실현성 검토]
+최종 3개를 확정하기 전에 후보 컨셉을 사용자 가치, 기술적 실현성, 실제 구현 가능성, 차별성, 전략적 적합성으로 내부 검토하세요.
+다음에 해당하는 컨셉은 버리거나 고치세요.
+- 설명되지 않은 가상의 기술에 의존하는 컨셉
+- 구체적인 사용자 문제가 없는 컨셉
+- 기존 해결책을 반복할 뿐인 컨셉
+- 기술적 불확실성을 설명하지 않고 비현실적인 능력을 요구하는 컨셉
+이 검토는 내부 필터입니다. 평가 점수, 외부 테스트 결과, 시장 검증 결과를 지어내서 출력하지 마세요.
+
+[6. 항목별 작성 기준]
+- 'title': 컨셉 이름.
+- 'persona': 분석 맥락에 맞는 고유하고 전략적인 타겟 페르소나. 이 사람이 겪는 문제가 드러나게 쓰세요.
+- 'description': 약 3줄 요약. 무엇을 하는 제품·서비스·경험인지, 선택된 인사이트가 어떻게 결합되었는지, 어떤 실제 기술을 바탕으로 가능한지를 담으세요.
+- 'coreValue': 반드시 "Who:", "Purpose:", "Service:" 세 소제목을 각각 한 줄씩 사용하세요.
+- 'keyFeatures': 최소 3개. 각 항목은 title과 desc를 가진 객체입니다. desc에는 그 기능이 사용자에게 무엇을 해 주는지를 구체적으로 쓰세요.
+- 'userScenario': 목표 연도의 하루를 배경으로 한 약 500~700자의 한국어 스토리텔링.
+  · 페르소나의 실제 생활 맥락, 컨셉을 쓰기 전의 문제, 컨셉이 쓸모 있어지는 순간, 주요 기능이 쓰이는 모습, 사용자가 어떻게 상호작용하는지, 사용 후 달라진 구체적인 변화를 담으세요.
+  · 주요 기능에 없는 마법 같은 기능이나 설명되지 않은 기능을 넣지 마세요.
+  · 생생하고 구체적이며 사람 냄새 나게 쓰세요.
+- 기대 효과는 측정된 결과처럼 쓰지 말고 가설로 표현하세요.
+
+[7. 출력 형식 — 엄격]
+정확히 3개의 객체로 된 RAW JSON 배열만 반환하세요.
+[{ "title": "...", "persona": "...", "description": "...", "coreValue": "Who: ...\\nPurpose: ...\\nService: ...", "keyFeatures": [{ "title": "...", "desc": "..." }], "userScenario": "..." }]
+- 필드 이름을 바꾸거나, 필드를 추가하거나 빼지 마세요.
+- 모든 내용은 한국어로 쓰세요. (coreValue의 Who:, Purpose:, Service: 소제목은 그대로 둡니다.)
+- JSON 밖에 설명을 쓰지 마세요.
+
+[수정 규칙] [INSTRUCTION]이 주어지면, 위 JSON 구조를 지키면서 최우선 수정 지시로 반영하세요.
+[어조] 한국어. 창의적이고 미래지향적이면서도 실용적이고 구체적으로. 값 안에 마크다운 굵은 글씨를 쓰지 마세요.`,
 
         "BENCHMARK": `You are a Global Business Analyst. Based on the given concept, find 2 similar EXISTING success cases.
 [DIVERSITY RULE — MOST IMPORTANT]
@@ -460,7 +516,7 @@ Return RAW JSON: { "answer": "..." }
                 body: JSON.stringify({
                   contents: [{ parts: [{ text: userPrompt }] }],
                   systemInstruction: { parts: [{ text: systemPrompt }] },
-                  generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: 8192 },
+                  generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: systemPrompt === PROMPTS["CONCEPTS"] ? 16384 : 8192 },
                   safetySettings: [
                     { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
                     { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -1166,7 +1222,8 @@ ${insightContext()}`;
 [PARTIAL EDIT MODE — this overrides the count rules and the return format above]
 Current items (numbered from 1):
 ${listJson}
-Rewrite ONLY item #${idx}. Keep it clearly distinct from the other items.${extraRule ? "\n" + extraRule : ""}
+Rewrite ONLY item #${idx}. Keep it clearly distinct from the other items.
+This overrides EVERY rule above about the number of items (such as "exactly 3" or "정확히 3개"): return exactly ONE item, never the full list.${extraRule ? "\n" + extraRule : ""}
 Edit instruction: ${ins || "다른 항목과 겹치지 않게, 더 구체적이고 깊이 있게 다시 작성해 주세요."}
 Return RAW JSON in exactly this shape (ONE item only): ${format}`;
       }
@@ -1237,7 +1294,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           onePrompt: (idx, ins) => `Trends:\n${state.step1Keywords.map(k => `- ${k.kr}: ${k.summary}`).join("\n")}\nTarget year: ${state.targetYear}`
             + partialBlock(numberedJson(state.futureScenario.trends), idx, ins,
               `{ "trends": [ { "futureTrendKeyword": "...", "characteristics": "...", "userScenario": "..." } ] }`),
-          normOne: (res) => normScenario(res).trends[0],
+          normOne: (res, idx) => { const list = normScenario(res).trends; return list.length > 1 ? (list[idx - 1] || list[0]) : list[0]; },
           replace: (idx, item) => ({ futureScenario: { trends: state.futureScenario.trends.map((t, i) => i === idx - 1 ? item : t) } })
         },
         reasoning: {
@@ -1256,7 +1313,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
               + partialBlock(numberedJson(state.reasoningResult.insights), idx, ins,
                 `{ "insights": [ { "headline": "...", "description": "..." } ] }`, "The headline MUST still follow one of the 4 headline patterns.");
           },
-          normOne: (res) => normInsights(res).insights[0],
+          normOne: (res, idx) => { const list = normInsights(res).insights; return list.length > 1 ? (list[idx - 1] || list[0]) : list[0]; },
           replace: (idx, item) => ({ reasoningResult: { insights: state.reasoningResult.insights.map((x, i) => i === idx - 1 ? item : x) } })
         },
         concepts: {
@@ -1274,7 +1331,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
               + partialBlock(numberedJson(slim), idx, ins,
                 `[ { "title": "...", "persona": "...", "description": "...", "coreValue": "Who: ...\\nPurpose: ...\\nService: ...", "keyFeatures": [ { "title": "...", "desc": "..." } ], "userScenario": "..." } ]`);
           },
-          normOne: (res) => normConcepts(res)[0],
+          normOne: (res, idx) => { const list = normConcepts(res); return list.length > 1 ? (list[idx - 1] || list[0]) : list[0]; },
           replace: (idx, item) => ({
             concepts: state.concepts.map((c, i) => i === idx - 1 ? item : c),
             allGeneratedConcepts: [...state.allGeneratedConcepts, item]
@@ -1294,7 +1351,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
                 `{ "selectedConceptName": "...", "cases": [ { "caseName": "...", "industry": "...", "caseCharacteristics": "...", "successFactor": "...", "businessResult": "...", "expansionFactor": "..." } ] }`,
                 "The new case MUST be a different company from a clearly different industry and character than every other current case.");
           },
-          normOne: (res) => normBenchmark(res, state.benchmarkResult.selectedConceptName).cases[0],
+          normOne: (res, idx) => { const list = normBenchmark(res, state.benchmarkResult.selectedConceptName).cases; return list.length > 1 ? (list[idx - 1] || list[0]) : list[0]; },
           replace: (idx, item) => ({ benchmarkResult: { ...state.benchmarkResult, cases: state.benchmarkResult.cases.map((c, i) => i === idx - 1 ? item : c) } })
         }
       };
