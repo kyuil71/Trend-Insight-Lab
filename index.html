@@ -237,7 +237,7 @@ desc: about 300-400 Korean characters. Each steep value: 1-2 sentences.
 [2. 트렌드 간 상호 영향 분석]
 - 선택한 트렌드들이 서로 강화하는지, 충돌하는지, 변형시키는지, 약화시키는지 판단하세요.
 - 억지로 같은 비중으로 섞지 마세요. 한 트렌드가 중심이 되고 다른 트렌드가 가속하거나 제약하는 역할을 할 수 있습니다. 다만 선택한 트렌드는 모두 분명한 역할을 가져야 하며, 어느 것도 빠뜨리지 마세요.
-- 이 상호작용이 어떻게 새로운 집단 행동 패턴을 만드는지 설명하세요.
+- 이 상호작용이 어떻게 새로운 집단 행동 패턴을 만드는지 내부적으로 분석해 예측의 근거로 삼으세요. (이 분석은 별도 문단으로 출력하지 않습니다.)
 
 [3. 제품·컨셉 금지 규칙 — 엄격]
 - 특정 제품, 기기, 앱, 플랫폼, 서비스, 디자인 해결책을 제안하지 마세요.
@@ -252,17 +252,19 @@ desc: about 300-400 Korean characters. Each steep value: 1-2 sentences.
 [5. 출력 형식 — 엄격]
 RAW JSON만 반환하세요.
 { "trends": [
-  { "futureTrendKeyword": "...", "characteristics": "..." },
-  { "futureTrendKeyword": "...", "characteristics": "..." }
+  { "futureTrendKeyword": "...", "characteristics": "...",
+    "steep": { "social": "...", "tech": "...", "econ": "...", "env": "...", "policy": "..." } },
+  { "futureTrendKeyword": "...", "characteristics": "...",
+    "steep": { "social": "...", "tech": "...", "econ": "...", "env": "...", "policy": "..." } }
 ] }
 
 [필드 작성 기준]
 - futureTrendKeyword: 사회·문화·행동·시장의 변화를 간결하게 표현한 이름. 반드시 "쉬운 한국어 트렌드명(English Keyword)" 형식으로 쓰세요. 예: "관계 가계부 사회(Relationship Ledger Society)"
-- characteristics: 약 700~900자의 한국어. 아래 4개 문단으로 나누고, 문단 사이는 줄바꿈(\\n\\n)으로 구분하세요. 각 문단은 "■ 소제목" 한 줄로 시작합니다.
+- characteristics: 약 600~800자의 한국어. 아래 3개 문단으로 나누고, 문단 사이는 줄바꿈(\\n\\n)으로 구분하세요. 각 문단은 "■ 소제목" 한 줄로 시작합니다.
   ■ 무엇이 바뀌는가: 예측한 변화의 핵심, 지금과 달라지는 점, 영향을 크게 받는 사람들이나 산업
-  ■ 왜 일어나는가: 가장 강한 STEEP 동인과 장벽, 인과 관계
-  ■ 선택한 트렌드의 역할: 각 트렌드가 중심·가속·제약 중 어떤 역할을 하며 어떻게 맞물리는지
-  ■ 신호와 불확실성: 지금 관찰할 수 있는 초기 신호, 예측을 바꿀 수 있는 반작용이나 불확실성
+  ■ 왜 일어나는가: 가장 강한 동인과 장벽, 인과 관계
+  ■ 변화의 초기 신호: 지금 이미 관찰할 수 있는 작은 변화와 징후
+- steep: 이 미래 트렌드를 이끄는 외부 동인을 앞 단계 STEEP 분석과 같은 형식으로 쓰세요. social(사회), tech(기술), econ(경제), env(환경), policy(정책) 다섯 키를 모두 채우고, 각 값은 1~2문장의 한국어로 이 트렌드에서 그 요인이 어떻게 작용하는지 구체적으로 쓰세요.
 
 [품질 점검]
 응답하기 전에 내부적으로 확인하세요.
@@ -281,6 +283,11 @@ RAW JSON만 반환하세요.
 ② [주체 A]&[주체 B]의 결합을 통한 [새로운 가치/영향] 창출이 중요하다
 ③ [주체]가 [대상/미래 맥락]에서 핵심적인 [역할/기능]로 중요해질 것이다
 ④ [주체 A]의 역할이 [현재 역할]에서 [미래 역할/플랫폼]로 바뀌고 있다
+[EVIDENCE RULE — MOST IMPORTANT]
+- The user message provides (A) the characteristics of EACH initially selected trend (summary and 5W1H analysis) and (B) the selected future trend (its change description and STEEP drivers).
+- EVERY insight must be clearly grounded in BOTH: the concrete characteristics of every initially selected trend AND the selected future trend's predicted change and drivers. Do not ignore any initial trend, and do not drift into generic statements that could apply to any trend.
+- In each description, make the reasoning chain explicit: which characteristic of each initial trend → how it evolves into the selected future trend (which change or STEEP driver) → why this matters for the user's Task Goal. Name the trends in plain Korean when you reference them.
+- The 3 insights must look at the evidence from clearly different angles.
 [CONTENT RULE] Each description: rich, deep, with clear cause-and-effect reasoning and relatable metaphors instead of jargon. A university student must grasp the logic immediately.
 [MODIFICATION RULE] If an [INSTRUCTION] is provided, treat it as a critical command to revise the previous output.
 Return RAW JSON: { "insights": [ { "headline": "...", "description": "..." } ] }
@@ -877,6 +884,7 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
         trends = trends.filter(t => t && typeof t === "object").map(t => ({
           futureTrendKeyword: t.futureTrendKeyword || t.keyword || "이름 없는 미래 트렌드",
           characteristics: t.characteristics || NO_DATA,
+          steep: (t.steep && typeof t.steep === "object") ? t.steep : null,
           userScenario: t.userScenario || ""
         }));
         if (!trends.length) throw new Error("미래 트렌드를 생성하지 못했습니다. 다시 시도해 주세요.");
@@ -966,6 +974,27 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
         return `[선택한 트렌드]\n${kws.map(k => `- ${k.kr} (${k.en}): ${k.summary}`).join("\n")}`
           + (steep ? `\n\n[앞 단계 과거·현재·미래 및 STEEP 분석]\n${steep}` : "")
           + `\n\n[목표 연도] ${state.targetYear}`;
+      }
+
+      /* 통합 인사이트 입력 — 과제 + 처음 선택한 트렌드 특징(요약·육하원칙) + 선택한 미래 트렌드(특성·STEEP) */
+      function reasoningInput(topic) {
+        const trends = state.futureScenario.trends;
+        const picked = trends[state.selectedScenarioIndex] || trends[0];
+        const initial = state.step1Keywords.map((k, i) => {
+          const dd = state.deepDiveResult && state.deepDiveResult[k.code];
+          const w = dd ? W5H1.map(([key, label]) => `  - ${label}: ${dd[key]}`).join("\n") : "";
+          return `(${i + 1}) ${k.kr} (${k.en})\n  요약: ${k.summary}${w ? `\n  육하원칙 분석:\n${w}` : ""}`;
+        }).join("\n\n");
+        const steep = picked.steep ? Object.entries(picked.steep).map(([k, v]) => `  - ${STEEP_LABEL[String(k).toLowerCase()] || k}: ${v}`).join("\n") : "";
+        return `[과제(Task goal)] ${topic}
+
+[A. 처음 선택한 트렌드의 특징]
+${initial}
+
+[B. 선택한 미래 트렌드 — ${state.targetYear}년]
+이름: ${picked.futureTrendKeyword}
+특성:
+${picked.characteristics}${steep ? `\nSTEEP 동인:\n${steep}` : ""}`;
       }
 
       /* =========================================================
@@ -1078,11 +1107,7 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
         async runReasoning(instruction) {
           const topic = draft("research-topic").trim() || state.researchTopic;
           if (!topic) { setState({ errorMsg: "추론할 과제를 입력해 주세요." }); return; }
-          const trends = state.futureScenario.trends;
-          const picked = trends[state.selectedScenarioIndex] || trends[0];
-          let prompt = `Task goal: ${topic}
-Initial trends: ${state.step1Keywords.map(k => k.kr).join(", ")}
-Chosen future trend: ${JSON.stringify(picked)}`;
+          let prompt = reasoningInput(topic);
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
           const res = await withLoading(instruction ? "추론 내용을 수정하는 중" : "인사이트를 추론하는 중",
             () => callGemini(PROMPTS["REASONING"], prompt));
@@ -1369,8 +1394,8 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           regenerateAll: async (ins) => { await Actions.runScenario(ins || "앞의 결과와 다른 관점으로 다시 예측해 주세요."); return !!state.futureScenario; },
           system: () => PROMPTS["SCENARIO"],
           onePrompt: (idx, ins) => scenarioInput()
-            + partialBlock(numberedJson(state.futureScenario.trends.map(t => ({ futureTrendKeyword: t.futureTrendKeyword, characteristics: t.characteristics }))), idx, ins,
-              `{ "trends": [ { "futureTrendKeyword": "...", "characteristics": "..." } ] }`),
+            + partialBlock(numberedJson(state.futureScenario.trends.map(t => ({ futureTrendKeyword: t.futureTrendKeyword, characteristics: t.characteristics, steep: t.steep }))), idx, ins,
+              `{ "trends": [ { "futureTrendKeyword": "...", "characteristics": "...", "steep": { "social": "...", "tech": "...", "econ": "...", "env": "...", "policy": "..." } } ] }`),
           normOne: (res, idx) => { const list = normScenario(res).trends; return list.length > 1 ? (list[idx - 1] || list[0]) : list[0]; },
           replace: (idx, item) => ({ futureScenario: { trends: state.futureScenario.trends.map((t, i) => i === idx - 1 ? item : t) } })
         },
@@ -1384,9 +1409,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           regenerateAll: async (ins) => { await Actions.runReasoning(ins || "앞의 결과와 다른 관점으로 다시 추론해 주세요."); return true; },
           system: () => PROMPTS["REASONING"],
           onePrompt: (idx, ins) => {
-            const trends = state.futureScenario.trends;
-            const picked = trends[state.selectedScenarioIndex] || trends[0];
-            return `Task goal: ${state.researchTopic}\nInitial trends: ${state.step1Keywords.map(k => k.kr).join(", ")}\nChosen future trend: ${JSON.stringify(picked)}`
+            return reasoningInput(state.researchTopic)
               + partialBlock(numberedJson(state.reasoningResult.insights), idx, ins,
                 `{ "insights": [ { "headline": "...", "description": "..." } ] }`, "The headline MUST still follow one of the 4 headline patterns.");
           },
@@ -1677,7 +1700,8 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
             state.futureScenario.trends.forEach((t, i) => {
               const on = state.selectedScenarioIndex === i;
               out.push(PDF.card(`${PDF.title(pad2(i + 1), t.futureTrendKeyword, "", on ? "선택" : "")}
-                ${PDF.kv("트렌드 특성", t.characteristics)}`, on));
+                ${PDF.kv("트렌드 특성", t.characteristics)}
+                ${t.steep ? `<div style="background:#f8fafc;border-radius:10px;padding:4px 14px 12px;margin-top:12px;"><div style="font-size:14px;font-weight:700;color:#64748b;margin-top:10px;">STEEP 분석</div>${Object.entries(t.steep).map(([k, v]) => PDF.kv(STEEP_LABEL[String(k).toLowerCase()] || String(k).toUpperCase(), v)).join("")}</div>` : ""}`, on));
             });
           }
 
@@ -1837,7 +1861,9 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           L.push(`[4. 미래 예측 트렌드 (${state.targetYear}년)]`);
           state.futureScenario.trends.forEach((t, i) => {
             L.push(`● #${i + 1}${state.selectedScenarioIndex === i ? " (선택됨)" : ""}: ${t.futureTrendKeyword}`);
-            L.push(`  특성: ${t.characteristics}`, "");
+            L.push(`  특성: ${t.characteristics}`);
+            if (t.steep) Object.entries(t.steep).forEach(([k, v]) => L.push(`   - ${STEEP_LABEL[String(k).toLowerCase()] || String(k).toUpperCase()}: ${v}`));
+            L.push("");
           });
         }
         if (state.researchTopic) L.push("[5. 추론 과제]", `- ${state.researchTopic}`, "");
@@ -2120,6 +2146,14 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
                 <h3 class="t-label text-blue-700 mb-3">트렌드 특성</h3>
                 ${trendTextHtml(sc.characteristics)}
               </div>
+              ${sc.steep ? `<div>
+                <h3 class="t-label text-blue-700 mb-3">STEEP 분석</h3>
+                <dl class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                  ${Object.entries(sc.steep).map(([k, v]) => `<div>
+                    <dt class="t-meta font-bold text-slate-900">${esc(STEEP_LABEL[String(k).toLowerCase()] || String(k).toUpperCase())}</dt>
+                    <dd class="t-small text-slate-700">${esc(v)}</dd></div>`).join("")}
+                </dl>
+              </div>` : ""}
             </div>
           </section>`;
         }).join("");
