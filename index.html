@@ -214,20 +214,66 @@ Return a RAW JSON array. Each element MUST have this exact shape:
 desc: about 300-400 Korean characters. Each steep value: 1-2 sentences.
 [TONE] Write in Korean. Professional and insightful. No markdown.`,
 
-        "SCENARIO": `You are a Futurist. Predict TWO DISTINCT NEW FUTURE TRENDS based on the combination of selected trends for the target year.
-Return a RAW JSON object:
+        "SCENARIO": `당신은 시니어 미래 예측 연구자(Foresight Researcher)이자 전략 트렌드 분석가입니다.
+목표 연도에 나타날 사회·소비 트렌드를 정확히 2개 예측하세요.
+
+[핵심 원칙]
+- 트렌드는 많은 사람이나 조직에 영향을 주는 사회, 문화, 소비 행동, 시장, 가치관의 큰 변화 흐름입니다.
+- 트렌드는 제품 아이디어, 디자인 컨셉, 서비스 제안, 기술 기능이 아닙니다.
+
+[입력 자료 활용]
+- 사용자 메시지에는 선택한 트렌드의 요약, 각 트렌드의 과거·현재·미래 및 STEEP 분석 결과, 목표 연도가 주어집니다.
+- 이 자료를 출발점으로 삼아, 각 트렌드가 어떻게 생겨났고 지금 무엇이 움직이고 있으며 목표 연도까지 어떻게 바뀔지 이어서 추론하세요.
+- 자료에 없는 내용을 사실처럼 단정하지 마세요.
+
+[1. STEEP 동인 분석]
+다음 외부 동인을 검토하고, 가장 강한 동인과 장벽, 그 사이의 인과 관계를 찾으세요. 모든 요인이 똑같이 중요하다고 가정하지 마세요.
+- 사회(S): 사회·문화 변화, 인구 구조, 생활 방식, 가치관
+- 기술(T): 기술의 보급, 성숙도, 접근성, 한계
+- 경제(E): 경기, 구매력, 산업·사업 구조
+- 환경(E): 환경 제약, 지속 가능성, 자원 압박
+- 정책(P): 정책, 규제, 제도, 사회적 신뢰
+
+[2. 트렌드 간 상호 영향 분석]
+- 선택한 트렌드들이 서로 강화하는지, 충돌하는지, 변형시키는지, 약화시키는지 판단하세요.
+- 억지로 같은 비중으로 섞지 마세요. 한 트렌드가 중심이 되고 다른 트렌드가 가속하거나 제약하는 역할을 할 수 있습니다. 다만 선택한 트렌드는 모두 분명한 역할을 가져야 하며, 어느 것도 빠뜨리지 마세요.
+- 이 상호작용이 어떻게 새로운 집단 행동 패턴을 만드는지 설명하세요.
+
+[3. 제품·컨셉 금지 규칙 — 엄격]
+- 특정 제품, 기기, 앱, 플랫폼, 서비스, 디자인 해결책을 제안하지 마세요.
+- 가상의 제품 이름으로 트렌드 이름을 짓지 마세요.
+- 사람들의 우선순위, 선택, 관계, 습관, 시장 행동의 변화에 집중하세요.
+- 기술은 변화를 이끄는 동인으로만 다루고, 새 발명품처럼 제안하지 마세요.
+
+[4. 두 트렌드의 차별성]
+- 두 트렌드는 변화가 일어나는 주된 방식과, 그 결과로 나타나는 사회·시장 행동이 서로 달라야 합니다.
+- 같은 입력 트렌드에서 출발해도 되지만, 같은 이야기의 표면적 변형이면 안 됩니다.
+
+[5. 출력 형식 — 엄격]
+RAW JSON만 반환하세요.
 { "trends": [
-  { "futureTrendKeyword": "Trend 1 Name", "characteristics": "...", "userScenario": "..." },
-  { "futureTrendKeyword": "Trend 2 Name", "characteristics": "...", "userScenario": "..." }
+  { "futureTrendKeyword": "...", "characteristics": "..." },
+  { "futureTrendKeyword": "...", "characteristics": "..." }
 ] }
-[RULES] Exactly 2 clearly distinct trends. 'futureTrendKeyword' MUST be an easy Korean name followed by its representative English keyword in parentheses, e.g. "관계 가계부 사회(Relationship Ledger Society)". 'characteristics' explains the essence and novelty. 'userScenario' is a storytelling narrative about core human behaviors. Each about 500-700 Korean characters.
-[BALANCED FUSION RULE — MOST IMPORTANT]
-- EACH of the 2 future trends must be a fusion of ALL the selected trends at once, with every selected trend contributing a roughly EQUAL weight. Never let one trend dominate or be left out.
-- In 'characteristics', explicitly name every selected trend and explain what each one contributes and how they fuse into something new.
-- In 'userScenario', the behaviors of every selected trend must visibly appear in the story.
-- The 2 future trends differ in the way the same selected trends are combined (different angle or outcome), not in which trends they use.
-[MODIFICATION RULE] If an [INSTRUCTION] is provided, prioritize it as a professional futurist while keeping the required format.
-[TONE] Write in Korean. Visionary and detailed. No markdown.`,
+
+[필드 작성 기준]
+- futureTrendKeyword: 사회·문화·행동·시장의 변화를 간결하게 표현한 이름. 반드시 "쉬운 한국어 트렌드명(English Keyword)" 형식으로 쓰세요. 예: "관계 가계부 사회(Relationship Ledger Society)"
+- characteristics: 약 700~900자의 한국어. 아래 4개 문단으로 나누고, 문단 사이는 줄바꿈(\\n\\n)으로 구분하세요. 각 문단은 "■ 소제목" 한 줄로 시작합니다.
+  ■ 무엇이 바뀌는가: 예측한 변화의 핵심, 지금과 달라지는 점, 영향을 크게 받는 사람들이나 산업
+  ■ 왜 일어나는가: 가장 강한 STEEP 동인과 장벽, 인과 관계
+  ■ 선택한 트렌드의 역할: 각 트렌드가 중심·가속·제약 중 어떤 역할을 하며 어떻게 맞물리는지
+  ■ 신호와 불확실성: 지금 관찰할 수 있는 초기 신호, 예측을 바꿀 수 있는 반작용이나 불확실성
+
+[품질 점검]
+응답하기 전에 내부적으로 확인하세요.
+- 두 결과가 모두 컨셉이 아니라 트렌드인가?
+- 막연하거나, 기술을 마법처럼 그리거나, 근거 없는 예측은 아닌가?
+- 지어낸 통계나 "검증되었다"는 식의 표현이 없는가?
+- 두 예측이 서로 뚜렷이 다르고, 구체적이며, 그럴듯한가?
+- 예측은 증명된 사실이 아니라 근거 있는 가설로 표현했는가?
+
+[수정 규칙] [INSTRUCTION]이 주어지면, JSON 형식과 트렌드·컨셉의 구분을 지키면서 최우선으로 반영하세요.
+[어조] 한국어. 분석적이고 통찰력 있으면서도 쉽게 읽히게. 마크다운 금지.`,
 
         "REASONING": `You are a Master Insight Strategist. Synthesize the initial trends and the predicted future trend based on the user's Task Goal. Derive the 3 most critical integrated insights.
 [STRICT HEADLINE RULE] Each headline MUST follow one of these 4 patterns precisely:
@@ -533,7 +579,7 @@ Return RAW JSON: { "answer": "..." }
                 body: JSON.stringify({
                   contents: [{ parts: [{ text: userPrompt }] }],
                   systemInstruction: { parts: [{ text: systemPrompt }] },
-                  generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: systemPrompt === PROMPTS["CONCEPTS"] ? 16384 : 8192 },
+                  generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: (systemPrompt === PROMPTS["CONCEPTS"] || systemPrompt === PROMPTS["SCENARIO"]) ? 16384 : 8192 },
                   safetySettings: [
                     { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
                     { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -831,7 +877,7 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
         trends = trends.filter(t => t && typeof t === "object").map(t => ({
           futureTrendKeyword: t.futureTrendKeyword || t.keyword || "이름 없는 미래 트렌드",
           characteristics: t.characteristics || NO_DATA,
-          userScenario: t.userScenario || NO_DATA
+          userScenario: t.userScenario || ""
         }));
         if (!trends.length) throw new Error("미래 트렌드를 생성하지 못했습니다. 다시 시도해 주세요.");
         return { trends };
@@ -903,6 +949,23 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
           out.push(normSteep(await callGemini(PROMPTS["STEEP"], p), [k])[0]);
         }
         return out;
+      }
+
+      /* 미래 트렌드 예측 입력 — 선택 트렌드 + 앞 단계 과거·현재·미래(STEEP) 결과 + 목표 연도 */
+      function scenarioInput() {
+        const kws = state.step1Keywords;
+        const T = { past: "과거", present: "현재", future: "미래" };
+        const steep = (state.steepResult || []).map(item => {
+          const lines = ["past", "present", "future"].map(t => {
+            const slot = item.timeline[t] || {};
+            const st = Object.entries(slot.steep || {}).map(([k, v]) => `${k}: ${v}`).join(" / ");
+            return `  [${T[t]}] ${slot.desc || ""}${st ? `\n    STEEP — ${st}` : ""}`;
+          }).join("\n");
+          return `### ${item.keyword}\n${lines}`;
+        }).join("\n\n");
+        return `[선택한 트렌드]\n${kws.map(k => `- ${k.kr} (${k.en}): ${k.summary}`).join("\n")}`
+          + (steep ? `\n\n[앞 단계 과거·현재·미래 및 STEEP 분석]\n${steep}` : "")
+          + `\n\n[목표 연도] ${state.targetYear}`;
       }
 
       /* =========================================================
@@ -1002,15 +1065,13 @@ FINAL CHECK: all 8 panels must be photorealistic live-action photographs in the 
 
         async runScenario(instruction) {
           const kws = state.step1Keywords;
-          let prompt = `Trends:\n${kws.map(k => `- ${k.kr}: ${k.summary}`).join("\n")}\nTarget year: ${state.targetYear}`;
+          let prompt = scenarioInput();
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
           const res = await withLoading(instruction ? "미래 트렌드를 다시 예측하고 있습니다" : "선택한 트렌드들의 융합된 미래 예측 중",
             () => callGemini(PROMPTS["SCENARIO"], prompt));
           if (res) {
             drafts["scenario-instruction"] = "";
             setState({ futureScenario: normScenario(res), step: 5, selectedScenarioIndex: -1, ...invalidateFrom(7) });
-            // 시나리오마다 8컷 스토리보드 1장씩 자동 생성
-            await Actions.makeStoryboards(state.futureScenario.trends.map((_, i) => i), "scenario");
           }
         },
 
@@ -1101,7 +1162,6 @@ ${insightContext()}`;
           drafts[insId] = "";
           setState({ ...cfg.replace(idx, item), ...(affects ? cfg.invalidate() : {}) });
           toast(`${pad2(idx)}번 ${cfg.label} 항목만 수정했습니다. 다른 항목은 그대로 유지됩니다.`, "ok");
-          if (key === "scenario") await Actions.makeStoryboards([idx - 1], "scenario");
         },
 
         // 인사이트 다중 선택 — 선택이 바뀌면 이전 컨셉 결과는 맞지 않으므로 비움
@@ -1308,9 +1368,9 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           invalidate: () => invalidateFrom(7),
           regenerateAll: async (ins) => { await Actions.runScenario(ins || "앞의 결과와 다른 관점으로 다시 예측해 주세요."); return !!state.futureScenario; },
           system: () => PROMPTS["SCENARIO"],
-          onePrompt: (idx, ins) => `Trends:\n${state.step1Keywords.map(k => `- ${k.kr}: ${k.summary}`).join("\n")}\nTarget year: ${state.targetYear}`
-            + partialBlock(numberedJson(state.futureScenario.trends), idx, ins,
-              `{ "trends": [ { "futureTrendKeyword": "...", "characteristics": "...", "userScenario": "..." } ] }`),
+          onePrompt: (idx, ins) => scenarioInput()
+            + partialBlock(numberedJson(state.futureScenario.trends.map(t => ({ futureTrendKeyword: t.futureTrendKeyword, characteristics: t.characteristics }))), idx, ins,
+              `{ "trends": [ { "futureTrendKeyword": "...", "characteristics": "..." } ] }`),
           normOne: (res, idx) => { const list = normScenario(res).trends; return list.length > 1 ? (list[idx - 1] || list[0]) : list[0]; },
           replace: (idx, item) => ({ futureScenario: { trends: state.futureScenario.trends.map((t, i) => i === idx - 1 ? item : t) } })
         },
@@ -1617,10 +1677,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
             state.futureScenario.trends.forEach((t, i) => {
               const on = state.selectedScenarioIndex === i;
               out.push(PDF.card(`${PDF.title(pad2(i + 1), t.futureTrendKeyword, "", on ? "선택" : "")}
-                ${PDF.kv("트렌드 특성", t.characteristics)}${PDF.kv("사용자 행동 시나리오", t.userScenario)}`, on));
-              const bUrl = t.storyboard && BOARD_IMG[t.storyboard.imageId];
-              if (bUrl) out.push(PDF.blk(`<div style="font-size:14px;font-weight:700;color:#64748b;margin:4px 0 8px;">${pad2(i + 1)} 시나리오 스토리보드</div>
-                <img src="${escAttr(bUrl)}" style="width:640px;display:block;margin:0 auto;border:1px solid #e2e8f0;" />`));
+                ${PDF.kv("트렌드 특성", t.characteristics)}`, on));
             });
           }
 
@@ -1780,12 +1837,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           L.push(`[4. 미래 예측 트렌드 (${state.targetYear}년)]`);
           state.futureScenario.trends.forEach((t, i) => {
             L.push(`● #${i + 1}${state.selectedScenarioIndex === i ? " (선택됨)" : ""}: ${t.futureTrendKeyword}`);
-            L.push(`  특성: ${t.characteristics}`, `  시나리오: ${t.userScenario}`);
-            if (t.storyboard && t.storyboard.scenes) {
-              L.push(`  스토리보드: ${t.storyboard.title}`);
-              t.storyboard.scenes.forEach((sc, k) => L.push(`   ${k + 1}. ${sc.caption}`));
-            }
-            L.push("");
+            L.push(`  특성: ${t.characteristics}`, "");
           });
         }
         if (state.researchTopic) L.push("[5. 추론 과제]", `- ${state.researchTopic}`, "");
@@ -2040,6 +2092,17 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
         </div>`;
       }
 
+      /* "■ 소제목"으로 시작하는 문단을 소제목 + 본문으로 표시 */
+      function trendTextHtml(text) {
+        const blocks = String(text || "").split(/\n\s*\n|\n(?=\s*■)/).map(b => b.trim()).filter(Boolean);
+        return `<div class="space-y-5">${blocks.map(b => {
+          const m = /^■\s*([^\n:：]+)[:：]?\s*\n?([\s\S]*)$/.exec(b);
+          return m
+            ? `<div><h4 class="t-h3 text-slate-900 mb-1">${esc(m[1].trim())}</h4><p class="t-body text-slate-800 prose-ko">${esc(m[2].trim())}</p></div>`
+            : `<p class="t-body text-slate-800 prose-ko">${esc(b)}</p>`;
+        }).join("")}</div>`;
+      }
+
       function viewScenario() {
         const cards = state.futureScenario.trends.map((sc, i) => {
           const on = state.selectedScenarioIndex === i;
@@ -2054,14 +2117,9 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
             </div>
             <div class="space-y-7 px-1">
               <div>
-                <h3 class="t-label text-blue-700 mb-2">트렌드 특성</h3>
-                <p class="t-body text-slate-800 prose-ko">${esc(sc.characteristics)}</p>
+                <h3 class="t-label text-blue-700 mb-3">트렌드 특성</h3>
+                ${trendTextHtml(sc.characteristics)}
               </div>
-              <div>
-                <h3 class="t-label text-indigo-700 mb-2">사용자 행동 시나리오</h3>
-                <p class="t-body text-slate-800 prose-ko italic">${esc(sc.userScenario)}</p>
-              </div>
-              ${storyboardBlock(sc, i)}
             </div>
           </section>`;
         }).join("");
