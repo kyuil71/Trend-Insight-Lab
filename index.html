@@ -1211,7 +1211,7 @@ ${insightContext()}`;
           if (!c) { setState({ errorMsg: "컨셉을 먼저 선택해 주세요." }); return; }
           let prompt = `Concept: ${c.title}\nCore value: ${c.coreValue}`;
           if (instruction) prompt += `\n[INSTRUCTION]: ${instruction}`;
-          const res = await withLoading(instruction ? "케이스스터디를 다시 찾고 있습니다" : "서로 다른 분야의 글로벌 사례를 찾고 있습니다",
+          const res = await withLoading(instruction ? "케이스스터디를 다시 찾고 있습니다" : "컨셉과 유사한 글로벌 사례를 찾고 있습니다",
             () => callGemini(PROMPTS["BENCHMARK"], prompt));
           if (res) {
             drafts["benchmark-instruction"] = "";
@@ -1991,7 +1991,7 @@ Return RAW JSON in exactly this shape (ONE item only): ${format}`;
           <div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mb-10 shadow-[0_10px_24px_rgba(37,99,235,.3)]">
             <i data-lucide="fingerprint" class="text-white w-12 h-12"></i>
           </div>
-          <h1 class="t-display italic text-slate-900 mb-4">Trend Insight Lab</h1>
+          <h1 class="t-display italic text-slate-900 mb-4" style="font-size:54px;line-height:1.1">Trend Insight Lab</h1>
           <p class="t-small text-slate-500 font-bold mb-12">트렌드에서 디자인 컨셉까지, 9단계 분석 도구</p>
           <div class="w-full space-y-4">
             <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="inline-block t-small text-blue-700 font-bold underline underline-offset-4">개인 API 키 발급받기</a>
